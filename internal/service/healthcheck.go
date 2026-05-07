@@ -1,6 +1,8 @@
 package service
 
 // HealthCheck defines the interface for health check service operations.
+//
+//go:generate mockery --name HealthCheck --filename healthcheck.go
 type HealthCheck interface {
 	// Check performs a health check and returns the service health status.
 	Check() (Response, error)
