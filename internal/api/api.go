@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"net/http"
 
+	_ "github.com/jaimesHub/bookmark-management/docs"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+
 	"github.com/gin-gonic/gin"
 	"github.com/jaimesHub/bookmark-management/internal/handler"
 	"github.com/jaimesHub/bookmark-management/internal/service"
@@ -49,6 +53,10 @@ func (e *engine) initRoutes() {
 	// check health handler
 	checkHealthSvc := service.NewHealthCheck(e.svcCfg)
 	checkHealthHandler := handler.NewHealthCheck(checkHealthSvc)
+
+	if e.cfg.SwaggerEnabled {
+		e.app.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	}
 
 	e.app.GET("/health-check", checkHealthHandler.CheckHealth)
 }

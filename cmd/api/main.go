@@ -9,6 +9,11 @@ import (
 	"github.com/kelseyhightower/envconfig"
 )
 
+// @title           Bookmark Management API
+// @version         1.0
+// @description     API for managing bookmarks
+// @host            localhost:8080
+// @BasePath
 func main() {
 	// create api config
 	cfg, err := api.NewConfig()

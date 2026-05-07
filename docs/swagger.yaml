@@ -1,0 +1,37 @@
+definitions:
+  service.Response:
+    properties:
+      instance_id:
+        type: string
+      message:
+        type: string
+      service_name:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: API for managing bookmarks
+  title: Bookmark Management API
+  version: "1.0"
+paths:
+  /health-check:
+    get:
+      description: Returns service health status
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/service.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Check health
+      tags:
+      - health
+swagger: "2.0"

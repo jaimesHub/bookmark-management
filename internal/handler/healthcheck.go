@@ -24,6 +24,13 @@ func NewHealthCheck(healthCheckSvc service.HealthCheck) HealthCheck {
 	}
 }
 
+// @Summary      Check health
+// @Description  Returns service health status
+// @Tags         health
+// @Produce      json
+// @Success      200  {object}  service.Response
+// @Failure      500  {object}  map[string]string
+// @Router       /health-check [get]
 func (s *healthCheckHandler) CheckHealth(c *gin.Context) {
 	res, err := s.healthCheckService.Check()
 	if err != nil {

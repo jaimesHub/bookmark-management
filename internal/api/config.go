@@ -3,7 +3,8 @@ package api
 import "github.com/kelseyhightower/envconfig"
 
 type Config struct {
-	AppPort string `default:"8080" envconfig:"APP_PORT"`
+	AppPort        string `default:"8080" envconfig:"APP_PORT"`
+	SwaggerEnabled bool   `default:"false" envconfig:"SWAGGER_ENABLED"`
 }
 
 func NewConfig() (*Config, error) {
