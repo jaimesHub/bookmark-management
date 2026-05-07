@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jaimesHub/bookmark-management/internal/handler"
@@ -12,6 +13,7 @@ import (
 type Engine interface {
 	// Start starts the API server and begins listening for HTTP requests.
 	Start() error
+	ServeHTTP(w http.ResponseWriter, req *http.Request)
 }
 
 type engine struct {
@@ -36,6 +38,11 @@ func NewEngine(cfg *Config, svcCfg *service.Config) Engine {
 // Start starts the API server on port 8080.
 func (e *engine) Start() error {
 	return e.app.Run(fmt.Sprintf(":%s", e.cfg.AppPort))
+}
+
+// ServeHTTP to test the API endpoint
+func (e *engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	e.app.ServeHTTP(w, req)
 }
 
 func (e *engine) initRoutes() {
