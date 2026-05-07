@@ -1,0 +1,6 @@
+package service
+
+type Config struct {
+	ServiceName string `default:"bookmark_service" envconfig:"SERVICE_NAME"`
+	InstanceID  string `default:"" envconfig:"INSTANCE_ID"`
+}
