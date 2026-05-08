@@ -1,3 +1,4 @@
+// Package service contains core business logic and service implementations.
 package service
 
 // HealthCheck defines the interface for health check service operations.

@@ -1,3 +1,4 @@
+// Package api contains API-layer configuration and utilities.
 package api
 
 import "github.com/kelseyhightower/envconfig"

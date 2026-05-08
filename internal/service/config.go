@@ -1,3 +1,4 @@
+// Package service contains core business logic and service implementations.
 package service
 
 type Config struct {
