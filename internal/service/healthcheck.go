@@ -9,6 +9,7 @@ type HealthCheck interface {
 	Check() (Response, error)
 }
 
+// healthCheckService implements the HealthCheck interface.
 type healthCheckService struct {
 	serviceName string
 	instanceID  string
@@ -22,13 +23,14 @@ func NewHealthCheck(cfg *Config) HealthCheck {
 	}
 }
 
-// Moving to model/dto later
+// Response represents the health check response data.
 type Response struct {
 	Message     string `json:"message"`
 	ServiceName string `json:"service_name"`
 	InstanceID  string `json:"instance_id"`
 }
 
+// Check returns the health status of the service with its name and instance ID.
 func (s *healthCheckService) Check() (Response, error) {
 	res := Response{
 		Message:     "OK",

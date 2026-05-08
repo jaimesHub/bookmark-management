@@ -1,3 +1,4 @@
+// Package api contains the API engine and route initialization for the HTTP server.
 package api
 
 import (
@@ -20,6 +21,7 @@ type Engine interface {
 	ServeHTTP(w http.ResponseWriter, req *http.Request)
 }
 
+// engine implements the Engine interface and manages the Gin HTTP server.
 type engine struct {
 	app    *gin.Engine
 	cfg    *Config
@@ -44,11 +46,12 @@ func (e *engine) Start() error {
 	return e.app.Run(fmt.Sprintf(":%s", e.cfg.AppPort))
 }
 
-// ServeHTTP to test the API endpoint
+// ServeHTTP implements the http.Handler interface for testing and request processing.
 func (e *engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	e.app.ServeHTTP(w, req)
 }
 
+// initRoutes initializes all API routes and handlers.
 func (e *engine) initRoutes() {
 	// check health handler
 	checkHealthSvc := service.NewHealthCheck(e.svcCfg)

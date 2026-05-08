@@ -1,3 +1,4 @@
+// Package handler contains HTTP request handlers for API endpoints.
 package handler
 
 import (
@@ -13,6 +14,7 @@ type HealthCheck interface {
 	CheckHealth(c *gin.Context)
 }
 
+// healthCheckHandler implements the HealthCheck interface.
 type healthCheckHandler struct {
 	healthCheckService service.HealthCheck
 }
@@ -24,6 +26,8 @@ func NewHealthCheck(healthCheckSvc service.HealthCheck) HealthCheck {
 	}
 }
 
+// CheckHealth handles HTTP GET requests to the /health-check endpoint and returns the service health status.
+//
 // @Summary      Check health
 // @Description  Returns service health status
 // @Tags         health
