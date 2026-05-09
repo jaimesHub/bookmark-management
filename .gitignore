@@ -4,5 +4,8 @@
 *.swo
 *~
 
+# Claude Code
+CLAUDE.md
+
 # Go
 vendor/
