@@ -12,6 +12,8 @@ const (
 )
 
 type UrlStorage interface {
+	StoreURL(ctx context.Context, code, url string) error
+	GetURL(ctx context.Context, code string) (string, error)
 }
 
 type urlStorage struct {
@@ -24,7 +26,7 @@ func NewUrlStorage(c *redis.Client) UrlStorage {
 
 // StoreURL stores a URL with its shortened code in Redis with a 24-hour expiration
 func (s *urlStorage) StoreURL(ctx context.Context, code, url string) error {
-	return s.c.Set(ctx, code, url, urlExpTime).Err()
+	return s.c.Set(ctx, code, url, urlExpTime).Err() // Using Redis' SDK
 }
 
 // GetURL retrieves the original URL by its shortened code from Redis
