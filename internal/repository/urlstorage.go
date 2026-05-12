@@ -11,7 +11,7 @@ const (
 	urlExpTime = 24 * time.Hour
 )
 
-// TODO: DELETE THIS AFTER REFACTORING DONE
+// ref from instructor: interface originally defined here, moved to service layer (Clean Architecture)
 //type UrlStorage interface {
 //	StoreURL(ctx context.Context, code, url string) error
 //	GetURL(ctx context.Context, code string) (string, error)
@@ -26,8 +26,8 @@ func NewUrlStorage(c *redis.Client) *urlStorage {
 }
 
 // StoreURL stores a URL with its shortened code in Redis with a 24-hour expiration
-func (s *urlStorage) StoreURL(ctx context.Context, code, url string) error {
-	return s.c.Set(ctx, code, url, urlExpTime).Err()
+func (s *urlStorage) StoreURL(ctx context.Context, code, url string, exp time.Duration) error {
+	return s.c.Set(ctx, code, url, exp).Err()
 }
 
 // GetURL retrieves the original URL by its shortened code from Redis

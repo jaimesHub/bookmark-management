@@ -2,9 +2,15 @@ package main
 
 import (
 	"context"
+	"time"
 
 	"github.com/jaimesHub/bookmark-management/internal/repository"
+	"github.com/jaimesHub/bookmark-management/internal/service"
 	"github.com/jaimesHub/bookmark-management/pkg/redis"
+)
+
+const (
+	expirationTime = 24 * time.Hour
 )
 
 func main() {
@@ -27,13 +33,20 @@ func main() {
 	//}
 	//
 	//// export CACHE_REDIS_DB=2 - Redis có 0-15 sub-db
+	//// docker run --name redis -d -p 6379:6379 redis:alpine
 	//// docker exec -it redis redis-cli
 	//// keys *
-	//// switch db: select index , index = [0, 15] -> select 2
+	//// switch db: seleLct index , index = [0, 15] -> select 2
 	//
 	//cacheDB.Set(ctx, "key", "4567", time.Hour)
 
 	urlRepo := repository.NewUrlStorage(urlStorage)
-	_ = urlRepo.StoreURL(ctx, "112233", "youtube.com")
+	// _ = urlRepo.StoreURL(ctx, "112233", "youtube.com")
+
+	urlService := service.NewShortenService(urlRepo)
+
+	key, _ := urlService.ShortenURL(ctx, "https://instagram.com", expirationTime)
+
+	println(">>> shortened key:", key)
 
 }
