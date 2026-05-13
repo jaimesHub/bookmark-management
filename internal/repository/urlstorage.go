@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	urlExpTime = 24 * time.Hour
+	urlExpTime = 24 * time.Hour // for testing, set a short expiration time.
 )
 
 // ref from instructor: interface originally defined here, moved to service layer (Clean Architecture)
@@ -25,7 +25,7 @@ func NewUrlStorage(c *redis.Client) *urlStorage {
 	return &urlStorage{c: c}
 }
 
-// StoreURL stores a URL with its shortened code in Redis with a 24-hour expiration
+// StoreURL stores a URL with its shortened code in Redis with the given expiration duration.
 func (s *urlStorage) StoreURL(ctx context.Context, code, url string, exp time.Duration) error {
 	return s.c.Set(ctx, code, url, exp).Err()
 }

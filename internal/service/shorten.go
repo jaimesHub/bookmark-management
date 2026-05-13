@@ -7,15 +7,21 @@ import (
 	"github.com/jaimesHub/bookmark-management/pkg/stringutils"
 )
 
+// example: https://raviatluri.in/articles/using-mockery-go-generate
+//
+//go:generate mockery --name URLStorage --filename urlstorage.go
 type URLStorage interface {
 	StoreURL(ctx context.Context, code, url string, exp time.Duration) error
 	GetURL(ctx context.Context, code string) (string, error)
 }
 
 const (
+	// urlCodeLength is the fixed length of a generated short URL code.
+	// 7 alphanumeric chars → 62^7 ≈ 3.5 trillion combinations, sufficient to avoid collisions.
 	urlCodeLength = 7
 )
 
+//go:generate mockery --name ShortenService --filename shorten_service.go
 type ShortenService interface {
 	ShortenURL(ctx context.Context, url string, exp time.Duration) (string, error)
 }

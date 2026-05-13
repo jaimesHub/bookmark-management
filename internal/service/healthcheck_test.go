@@ -1,8 +1,9 @@
-package service
+package service_test
 
 import (
 	"testing"
 
+	"github.com/jaimesHub/bookmark-management/internal/service"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -12,7 +13,7 @@ func TestCheck(t *testing.T) {
 	testCases := []struct {
 		name string
 
-		inputConfig Config
+		inputConfig service.Config
 
 		expectedMessage     string
 		expectedServiceName string
@@ -22,7 +23,7 @@ func TestCheck(t *testing.T) {
 	}{
 		{
 			name: "check health success",
-			inputConfig: Config{
+			inputConfig: service.Config{
 				ServiceName: "bookmark-management",
 				InstanceID:  "550e8400-e29b-41d4-a716-446655440000",
 			},
@@ -33,7 +34,7 @@ func TestCheck(t *testing.T) {
 		},
 		{
 			name: "check health success with custom config",
-			inputConfig: Config{
+			inputConfig: service.Config{
 				ServiceName: "test-management",
 				InstanceID:  "123456789",
 			},
@@ -48,7 +49,7 @@ func TestCheck(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			testSvc := NewHealthCheck(&tc.inputConfig)
+			testSvc := service.NewHealthCheck(&tc.inputConfig)
 
 			res, err := testSvc.Check()
 
