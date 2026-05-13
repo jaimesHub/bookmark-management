@@ -59,7 +59,7 @@ func TestCheckHealthEndpoint(t *testing.T) {
 	}
 
 	gin.SetMode(gin.TestMode)
-	testAPI := api.NewEngine(cfg, &svcCfg)
+	testAPI := api.NewEngine(cfg, &svcCfg, nil)
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
