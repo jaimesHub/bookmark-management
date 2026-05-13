@@ -1,3 +1,5 @@
+COVERAGE_EXCLUDE   = mocks|main.go|test|pkg/redis
+COVERAGE_THRESHOLD = 80
 .PHONY: help run test test-race test-service test-repository test-handler test-coverage build clean install-tools swag fmt generate
 
 help:
@@ -35,9 +37,16 @@ test-handler:
 	go test ./internal/handler/... -v -race -cover
 
 test-coverage:
-	go test -v ./... -coverprofile=coverage.out
+	go test ./... -coverprofile=coverage.tmp -covermode=atomic -coverpkg=./... -p 1
+	grep -vE "$(COVERAGE_EXCLUDE)" coverage.tmp > coverage.out
 	go tool cover -html=coverage.out -o coverage.html
-	@echo "Coverage report generated: coverage.html"
+	@total=$$(go tool cover -func=coverage.out | grep total: | awk '{print $$3}' | sed 's/%//'); \
+	if [ $$(echo "$$total < $(COVERAGE_THRESHOLD)" | bc -l) -eq 1 ]; then \
+		echo "❌ Coverage ($$total%) is below threshold ($(COVERAGE_THRESHOLD)%)"; \
+		exit 1; \
+	else \
+		echo "✅ Coverage ($$total%) meets threshold ($(COVERAGE_THRESHOLD)%)"; \
+	fi
 
 generate:
 	go generate ./...
@@ -48,7 +57,7 @@ build:
 	@echo "Build output: bin/api"
 
 clean:
-	rm -rf bin/ coverage.out coverage.html
+	rm -rf bin/ coverage.tmp coverage.out coverage.html
 
 swag:
 	swag init -g cmd/api/main.go

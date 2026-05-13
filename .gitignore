@@ -9,3 +9,8 @@ CLAUDE.md
 
 # Go
 vendor/
+
+# Go test coverage files
+coverage.out
+coverage.tmp
+coverage.html
