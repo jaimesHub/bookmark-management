@@ -40,3 +40,8 @@ func (s *urlStorage) GetURL(ctx context.Context, code string) (string, error) {
 func (s *urlStorage) StoreURLIfNotExists(ctx context.Context, code, url string, exp time.Duration) (bool, error) {
 	return s.c.SetNX(ctx, code, url, exp).Result()
 }
+
+// Ping checks if the Redis connection is alive.
+func (s *urlStorage) Ping(ctx context.Context) error {
+	return s.c.Ping(ctx).Err()
+}

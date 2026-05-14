@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jaimesHub/bookmark-management/internal/api"
 	"github.com/jaimesHub/bookmark-management/internal/service"
+	"github.com/jaimesHub/bookmark-management/internal/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -59,7 +60,8 @@ func TestCheckHealthEndpoint(t *testing.T) {
 	}
 
 	gin.SetMode(gin.TestMode)
-	testAPI := api.NewEngine(cfg, &svcCfg, nil)
+	redisClient := testutil.InitMockRedis(t)
+	testAPI := api.NewEngine(cfg, &svcCfg, redisClient)
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {

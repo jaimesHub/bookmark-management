@@ -1,47 +1,53 @@
 package service_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/jaimesHub/bookmark-management/internal/service"
+	"github.com/jaimesHub/bookmark-management/internal/service/mocks"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestCheck(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
-		name string
-
+		name        string
 		inputConfig service.Config
+		mockSetup   func(*mocks.Pinger)
 
-		expectedMessage     string
-		expectedServiceName string
-		expectedInstanceID  string
-
-		//expectedError error
+		expectedResponse service.Response
+		expectedError    error
 	}{
 		{
-			name: "check health success",
+			name: "ping success",
 			inputConfig: service.Config{
 				ServiceName: "bookmark-management",
 				InstanceID:  "550e8400-e29b-41d4-a716-446655440000",
 			},
-			expectedMessage:     "OK",
-			expectedServiceName: "bookmark-management",
-			expectedInstanceID:  "550e8400-e29b-41d4-a716-446655440000",
-			//expectedError:       nil,
+			mockSetup: func(m *mocks.Pinger) {
+				m.On("Ping", mock.Anything).Return(nil)
+			},
+			expectedResponse: service.Response{
+				Message:     "OK",
+				ServiceName: "bookmark-management",
+				InstanceID:  "550e8400-e29b-41d4-a716-446655440000",
+			},
+			expectedError: nil,
 		},
 		{
-			name: "check health success with custom config",
+			name: "ping failure",
 			inputConfig: service.Config{
-				ServiceName: "test-management",
-				InstanceID:  "123456789",
+				ServiceName: "bookmark-management",
+				InstanceID:  "550e8400-e29b-41d4-a716-446655440000",
 			},
-			expectedMessage:     "OK",
-			expectedServiceName: "test-management",
-			expectedInstanceID:  "123456789",
-			//expectedError:       nil,
+			mockSetup: func(m *mocks.Pinger) {
+				m.On("Ping", mock.Anything).Return(errors.New("redis unreachable"))
+			},
+			expectedResponse: service.Response{},
+			expectedError:    errors.New("redis unreachable"),
 		},
 	}
 
@@ -49,15 +55,20 @@ func TestCheck(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			testSvc := service.NewHealthCheck(&tc.inputConfig)
+			mockPinger := mocks.NewPinger(t)
+			tc.mockSetup(mockPinger)
 
-			res, err := testSvc.Check()
+			svc := service.NewHealthCheck(&tc.inputConfig, mockPinger)
 
-			assert.Equal(t, tc.expectedMessage, res.Message)
-			assert.Equal(t, tc.expectedServiceName, res.ServiceName)
-			assert.Equal(t, tc.expectedInstanceID, res.InstanceID)
-			//assert.ErrorIs(t, err, tc.expectedError)
-			assert.NoError(t, err)
+			res, err := svc.Check()
+
+			if tc.expectedError != nil {
+				assert.EqualError(t, err, tc.expectedError.Error())
+				assert.Equal(t, service.Response{}, res)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tc.expectedResponse, res)
+			}
 		})
 	}
 }
