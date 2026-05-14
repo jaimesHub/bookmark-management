@@ -99,6 +99,7 @@ func TestShortenEndpoint(t *testing.T) {
 				assert.NoError(t, json.NewDecoder(recorder.Body).Decode(&body))
 				assert.Len(t, body["code"], 7)
 				assert.Regexp(t, "^[a-zA-Z0-9]+$", body["code"])
+				assert.Equal(t, "Shorten URL generated successfully!", body["message"])
 			}
 
 			if tc.expectedStatusCode == http.StatusBadRequest {

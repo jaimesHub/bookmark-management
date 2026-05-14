@@ -59,5 +59,8 @@ func (s *shortenHandler) ShortenURL(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"code": code})
+	c.JSON(http.StatusCreated, gin.H{
+		"code":    code,
+		"message": "Shorten URL generated successfully!",
+	})
 }

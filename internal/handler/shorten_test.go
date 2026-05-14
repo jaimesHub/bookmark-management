@@ -47,7 +47,7 @@ func TestShortenHandler_ShortenURL(t *testing.T) {
 				return serviceMock
 			},
 			expectedStatus: http.StatusCreated,
-			expectedBody:   `{"code": "abc1234"}`,
+			expectedBody:   `{"code": "abc1234", "message": "Shorten URL generated successfully!"}`,
 		},
 		{
 			name: "bad request",
