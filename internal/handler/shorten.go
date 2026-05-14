@@ -45,7 +45,7 @@ func (s *shortenHandler) ShortenURL(c *gin.Context) {
 	var req ShortenRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
 	}
 
@@ -55,7 +55,7 @@ func (s *shortenHandler) ShortenURL(c *gin.Context) {
 		time.Duration(req.Exp)*time.Second,
 	)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
 

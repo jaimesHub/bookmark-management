@@ -17,6 +17,18 @@ import (
 func TestShortenEndpoint(t *testing.T) {
 	t.Parallel()
 
+	cfg, err := api.NewConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	svcCfg := service.Config{
+		ServiceName: "bookmark_service",
+		InstanceID:  "550e8400-e29b-41d4-a716-446655440000",
+	}
+
+	gin.SetMode(gin.TestMode)
+
 	testCases := []struct {
 		name string
 
@@ -69,21 +81,28 @@ func TestShortenEndpoint(t *testing.T) {
 			},
 			expectedStatusCode: http.StatusNotFound,
 		},
-	}
+		{
+			name: "redis closed internal server error",
 
-	cfg, err := api.NewConfig()
-	if err != nil {
-		t.Fatal(err)
-	}
+			setupTestHTTP: func(_ api.Engine) *httptest.ResponseRecorder {
+				closedRedis := testutil.InitClosedRedis(t)
+				closedAPI := api.NewEngine(cfg, &svcCfg, closedRedis)
 
-	svcCfg := service.Config{
-		ServiceName: "bookmark_service",
-		InstanceID:  "550e8400-e29b-41d4-a716-446655440000",
+				req := httptest.NewRequest(
+					http.MethodPost, "/v1/links/shorten",
+					strings.NewReader(`{"url": "https://example.com", "exp": 3600}`),
+				)
+				req.Header.Set("Content-Type", "application/json")
+				respRecorder := httptest.NewRecorder()
+
+				closedAPI.ServeHTTP(respRecorder, req)
+				return respRecorder
+			},
+			expectedStatusCode: http.StatusInternalServerError,
+		},
 	}
 
 	redisClient := testutil.InitMockRedis(t)
-
-	gin.SetMode(gin.TestMode)
 	testAPI := api.NewEngine(cfg, &svcCfg, redisClient)
 
 	for _, tc := range testCases {
@@ -105,7 +124,13 @@ func TestShortenEndpoint(t *testing.T) {
 			if tc.expectedStatusCode == http.StatusBadRequest {
 				var body map[string]string
 				assert.NoError(t, json.NewDecoder(recorder.Body).Decode(&body))
-				assert.NotEmpty(t, body["error"])
+				assert.Equal(t, "invalid request", body["error"])
+			}
+
+			if tc.expectedStatusCode == http.StatusInternalServerError {
+				var body map[string]string
+				assert.NoError(t, json.NewDecoder(recorder.Body).Decode(&body))
+				assert.Equal(t, "internal server error", body["error"])
 			}
 		})
 	}

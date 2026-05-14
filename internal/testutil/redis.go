@@ -15,3 +15,12 @@ func InitMockRedis(t *testing.T) *redis.Client {
 		Addr: mock.Addr(),
 	})
 }
+
+// InitClosedRedis returns a go-redis client pointed at an unreachable address.
+// Use this to simulate a Redis connection failure in tests.
+func InitClosedRedis(t *testing.T) *redis.Client {
+	t.Helper()
+	return redis.NewClient(&redis.Options{
+		Addr: "127.0.0.1:1",
+	})
+}
