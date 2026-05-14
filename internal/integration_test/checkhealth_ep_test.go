@@ -17,9 +17,8 @@ func TestCheckHealthEndpoint(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
-		name          string
-		setupTestHTTP func(api api.Engine) *httptest.ResponseRecorder
-
+		name                 string
+		setupTestHTTP        func(api api.Engine) *httptest.ResponseRecorder
 		expectedStatusCode   int
 		expectedResponseBody string
 	}{
@@ -49,23 +48,20 @@ func TestCheckHealthEndpoint(t *testing.T) {
 		},
 	}
 
-	cfg, err := api.NewConfig()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	svcCfg := service.Config{
-		ServiceName: "bookmark_service",
-		InstanceID:  "550e8400-e29b-41d4-a716-446655440000",
-	}
-
-	gin.SetMode(gin.TestMode)
-	redisClient := testutil.InitMockRedis(t)
-	testAPI := api.NewEngine(cfg, &svcCfg, redisClient)
-
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+
+			cfg, err := api.NewConfig()
+			if err != nil {
+				t.Fatal(err)
+			}
+			svcCfg := service.Config{
+				ServiceName: "bookmark_service",
+				InstanceID:  "550e8400-e29b-41d4-a716-446655440000",
+			}
+			gin.SetMode(gin.TestMode)
+			testAPI := api.NewEngine(cfg, &svcCfg, testutil.InitMockRedis(t))
 
 			recorder := tc.setupTestHTTP(testAPI)
 
