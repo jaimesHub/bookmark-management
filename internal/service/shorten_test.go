@@ -1,6 +1,7 @@
 package service_test
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -19,10 +20,8 @@ func TestShortenURL(t *testing.T) {
 		inputURL string
 		inputExp time.Duration
 
-		// Mock behavior
-		mockSetup func(*mocks.URLStorage)
+		mockSetup func(ctx context.Context, m *mocks.URLStorage)
 
-		// Expectations
 		expectedCodeLength int
 		expectedError      error
 	}{
@@ -30,9 +29,9 @@ func TestShortenURL(t *testing.T) {
 			name:     "shorten URL success",
 			inputURL: "https://example.com",
 			inputExp: 24 * time.Hour,
-			mockSetup: func(m *mocks.URLStorage) {
+			mockSetup: func(ctx context.Context, m *mocks.URLStorage) {
 				m.On("StoreURLIfNotExists",
-					mock.Anything,
+					ctx,
 					mock.AnythingOfType("string"),
 					"https://example.com",
 					24*time.Hour,
@@ -45,9 +44,9 @@ func TestShortenURL(t *testing.T) {
 			name:     "repository error",
 			inputURL: "https://example.com",
 			inputExp: 24 * time.Hour,
-			mockSetup: func(m *mocks.URLStorage) {
+			mockSetup: func(ctx context.Context, m *mocks.URLStorage) {
 				m.On("StoreURLIfNotExists",
-					mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+					ctx, mock.Anything, mock.Anything, mock.Anything,
 				).Return(false, errors.New("redis connection failed"))
 			},
 			expectedCodeLength: 0,
@@ -57,9 +56,9 @@ func TestShortenURL(t *testing.T) {
 			name:     "shorten URL with custom TTL",
 			inputURL: "https://google.com",
 			inputExp: 1 * time.Hour,
-			mockSetup: func(m *mocks.URLStorage) {
+			mockSetup: func(ctx context.Context, m *mocks.URLStorage) {
 				m.On("StoreURLIfNotExists",
-					mock.Anything,
+					ctx,
 					mock.AnythingOfType("string"),
 					"https://google.com",
 					1*time.Hour,
@@ -72,15 +71,15 @@ func TestShortenURL(t *testing.T) {
 			name:     "code collision retry success",
 			inputURL: "https://example.com",
 			inputExp: 24 * time.Hour,
-			mockSetup: func(m *mocks.URLStorage) {
+			mockSetup: func(ctx context.Context, m *mocks.URLStorage) {
 				m.On("StoreURLIfNotExists",
-					mock.Anything,
+					ctx,
 					mock.AnythingOfType("string"),
 					"https://example.com",
 					24*time.Hour,
 				).Return(false, nil).Once() // lần 1: collision
 				m.On("StoreURLIfNotExists",
-					mock.Anything,
+					ctx,
 					mock.AnythingOfType("string"),
 					"https://example.com",
 					24*time.Hour,
@@ -97,7 +96,7 @@ func TestShortenURL(t *testing.T) {
 			ctx := t.Context()
 
 			mockRepo := mocks.NewURLStorage(t)
-			tc.mockSetup(mockRepo)
+			tc.mockSetup(ctx, mockRepo)
 
 			svc := service.NewShortenService(mockRepo)
 
@@ -106,7 +105,6 @@ func TestShortenURL(t *testing.T) {
 			if tc.expectedError != nil {
 				assert.EqualError(t, err, tc.expectedError.Error())
 				assert.Empty(t, code)
-
 			} else {
 				assert.Regexp(t, "^[a-zA-Z0-9]+$", code)
 				assert.NoError(t, err)
