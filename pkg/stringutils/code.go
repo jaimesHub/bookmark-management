@@ -10,6 +10,8 @@ const (
 	charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 )
 
+// GenerateCode returns a cryptographically random alphanumeric string of the given length.
+// Uses crypto/rand (not math/rand) so the output is safe for use as a public short-code.
 func GenerateCode(length int) (string, error) {
 	var strBuilder bytes.Buffer
 
