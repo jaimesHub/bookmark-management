@@ -61,6 +61,34 @@ func (_m *URLStorage) StoreURL(ctx context.Context, code string, url string, exp
 	return r0
 }
 
+// StoreURLIfNotExists provides a mock function with given fields: ctx, code, url, exp
+func (_m *URLStorage) StoreURLIfNotExists(ctx context.Context, code string, url string, exp time.Duration) (bool, error) {
+	ret := _m.Called(ctx, code, url, exp)
+
+	if len(ret) == 0 {
+		panic("no return value specified for StoreURLIfNotExists")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, time.Duration) (bool, error)); ok {
+		return rf(ctx, code, url, exp)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, time.Duration) bool); ok {
+		r0 = rf(ctx, code, url, exp)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, time.Duration) error); ok {
+		r1 = rf(ctx, code, url, exp)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // NewURLStorage creates a new instance of URLStorage. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewURLStorage(t interface {

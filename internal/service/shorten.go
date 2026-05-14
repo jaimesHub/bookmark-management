@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/jaimesHub/bookmark-management/pkg/stringutils"
@@ -13,12 +14,14 @@ import (
 type URLStorage interface {
 	StoreURL(ctx context.Context, code, url string, exp time.Duration) error
 	GetURL(ctx context.Context, code string) (string, error)
+	StoreURLIfNotExists(ctx context.Context, code, url string, exp time.Duration) (bool, error)
 }
 
 const (
 	// urlCodeLength is the fixed length of a generated short URL code.
 	// 7 alphanumeric chars → 62^7 ≈ 3.5 trillion combinations, sufficient to avoid collisions.
 	urlCodeLength = 7
+	maxRetries    = 3
 )
 
 //go:generate mockery --name ShortenService --filename shorten_service.go
@@ -35,18 +38,19 @@ func NewShortenService(repo URLStorage) ShortenService {
 }
 
 func (s *shortenService) ShortenURL(ctx context.Context, url string, exp time.Duration) (string, error) {
-	// create key
-	urlCode, err := stringutils.GenerateCode(urlCodeLength)
-	if err != nil {
-		return "", err
-	}
+	for range maxRetries {
+		code, err := stringutils.GenerateCode(urlCodeLength)
+		if err != nil {
+			return "", err
+		}
 
-	// adding to storage (redis)
-	err = s.repo.StoreURL(ctx, urlCode, url, exp)
-	if err != nil {
-		return "", err
+		stored, err := s.repo.StoreURLIfNotExists(ctx, code, url, exp)
+		if err != nil {
+			return "", err
+		}
+		if stored {
+			return code, nil
+		}
 	}
-
-	// return key
-	return urlCode, nil
+	return "", fmt.Errorf("failed to generate unique code after %d attempts", maxRetries)
 }

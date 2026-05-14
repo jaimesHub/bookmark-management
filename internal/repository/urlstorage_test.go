@@ -107,3 +107,50 @@ func TestUrlStorage_GetURL(t *testing.T) {
 		})
 	}
 }
+
+func TestUrlStorage_StoreURLIfNotExists(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name           string
+		setupMock      func() *redis.Client
+		code           string
+		expectedStored bool
+		expectedErr    error
+	}{
+		{
+			name: "code not exists",
+			setupMock: func() *redis.Client {
+				return testutil.InitMockRedis(t)
+			},
+			code:           "newcode1",
+			expectedStored: true,
+			expectedErr:    nil,
+		},
+		{
+			name: "code already exists",
+			setupMock: func() *redis.Client {
+				mock := testutil.InitMockRedis(t)
+				mock.Set(t.Context(), "existcode", "https://x.com", urlExpTime)
+				return mock
+			},
+			code:           "existcode",
+			expectedStored: false,
+			expectedErr:    nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			ctx := t.Context()
+
+			redisMock := tc.setupMock()
+			testRepo := NewUrlStorage(redisMock)
+
+			stored, err := testRepo.StoreURLIfNotExists(ctx, tc.code, "https://example.com", urlExpTime)
+			assert.Equal(t, tc.expectedErr, err)
+			assert.Equal(t, tc.expectedStored, stored)
+		})
+	}
+}
