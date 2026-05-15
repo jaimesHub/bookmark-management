@@ -7,6 +7,10 @@ import "github.com/kelseyhightower/envconfig"
 type Config struct {
 	AppPort        string `default:"8080" envconfig:"APP_PORT"`
 	SwaggerEnabled bool   `default:"false" envconfig:"SWAGGER_ENABLED"`
+
+	// Logger config
+	Env      string `envconfig:"APP_ENV" default:"dev"`
+	LogLevel string `envconfig:"LOG_LEVEL" default:"info"`
 }
 
 // NewConfig creates a new API Config instance from environment variables.
