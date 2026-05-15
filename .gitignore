@@ -14,3 +14,7 @@ vendor/
 coverage.out
 coverage.tmp
 coverage.html
+
+# Local scratch / manual test files
+cmd/test/
+pkg/redis/mock.go

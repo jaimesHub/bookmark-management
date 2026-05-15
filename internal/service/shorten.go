@@ -25,6 +25,9 @@ const (
 )
 
 //go:generate mockery --name ShortenService --filename shorten_service.go
+
+// ShortenService is the business-logic contract for URL shortening.
+// Callers supply the original URL and desired TTL; the service returns an opaque short code.
 type ShortenService interface {
 	ShortenURL(ctx context.Context, url string, exp time.Duration) (string, error)
 }
@@ -33,10 +36,13 @@ type shortenService struct {
 	repo URLStorage
 }
 
+// NewShortenService constructs a ShortenService backed by the given URLStorage.
 func NewShortenService(repo URLStorage) ShortenService {
 	return &shortenService{repo: repo}
 }
 
+// ShortenURL generates a unique short code for url, stores it with the given TTL, and returns the code.
+// It retries up to maxRetries times if the generated code already exists in the store.
 func (s *shortenService) ShortenURL(ctx context.Context, url string, exp time.Duration) (string, error) {
 	for range maxRetries {
 		code, err := stringutils.GenerateCode(urlCodeLength)

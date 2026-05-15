@@ -56,11 +56,11 @@ func (e *engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 // initRoutes initializes all API routes and handlers.
 func (e *engine) initRoutes() {
-	// shorten + health share same urlRepo
 	urlRepo := repository.NewUrlStorage(e.redisClient)
+	pingRepo := repository.NewPingRepo(e.redisClient)
 
 	// check health handler
-	checkHealthSvc := service.NewHealthCheck(e.svcCfg, urlRepo)
+	checkHealthSvc := service.NewHealthCheck(e.svcCfg, pingRepo)
 	checkHealthHandler := handler.NewHealthCheck(checkHealthSvc)
 
 	if e.cfg.SwaggerEnabled {

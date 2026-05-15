@@ -24,7 +24,7 @@ func TestShortenHandler_ShortenURL(t *testing.T) {
 		setupMockService func(ctx *gin.Context) *mocks.ShortenService
 
 		expectedStatus int
-		expectedBody   string // JSON string
+		expectedBody   string
 	}{
 		{
 			name: "success",
@@ -82,7 +82,6 @@ func TestShortenHandler_ShortenURL(t *testing.T) {
 				return serviceMock
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   `{"error": "redis connection failed"}`,
 		},
 	}
 
@@ -108,14 +107,14 @@ func TestShortenHandler_ShortenURL(t *testing.T) {
 				var body map[string]string
 				assert.Equal(t, tc.expectedStatus, rec.Code)
 				assert.NoError(t, json.NewDecoder(rec.Body).Decode(&body))
-				assert.NotEmpty(t, body["error"])
+				assert.Equal(t, "invalid request", body["error"])
 			}
 
 			if tc.expectedStatus == http.StatusInternalServerError {
 				var body map[string]string
 				assert.Equal(t, tc.expectedStatus, rec.Code)
 				assert.NoError(t, json.NewDecoder(rec.Body).Decode(&body))
-				assert.Equal(t, "redis connection failed", body["error"])
+				assert.Equal(t, "internal server error", body["error"])
 			}
 		})
 	}

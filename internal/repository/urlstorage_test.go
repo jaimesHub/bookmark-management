@@ -17,7 +17,7 @@ func TestUrlStorage_StoreURL(t *testing.T) {
 	testCases := []struct {
 		name string
 
-		setupMock func() *redis.Client
+		setupMock func(ctx context.Context) *redis.Client
 
 		expectedError error
 		verifyFunc    func(ctx context.Context, repo *urlStorage)
@@ -25,9 +25,8 @@ func TestUrlStorage_StoreURL(t *testing.T) {
 		{
 			name: "normal case",
 
-			setupMock: func() *redis.Client {
-				mock := testutil.InitMockRedis(t)
-				return mock
+			setupMock: func(ctx context.Context) *redis.Client {
+				return testutil.InitMockRedis(t)
 			},
 
 			expectedError: nil,
@@ -44,7 +43,7 @@ func TestUrlStorage_StoreURL(t *testing.T) {
 			t.Parallel()
 			ctx := t.Context()
 
-			redisMock := tc.setupMock()
+			redisMock := tc.setupMock(ctx)
 			testRepo := NewUrlStorage(redisMock)
 
 			err := testRepo.StoreURL(ctx, "1234567", "https://google.com", urlExpTime)
@@ -63,7 +62,7 @@ func TestUrlStorage_GetURL(t *testing.T) {
 	testCases := []struct {
 		name string
 
-		setupMock func() *redis.Client
+		setupMock func(ctx context.Context) *redis.Client
 
 		code        string
 		expectedURL string
@@ -71,25 +70,23 @@ func TestUrlStorage_GetURL(t *testing.T) {
 	}{
 		{
 			name: "URL exists",
-			setupMock: func() *redis.Client {
+			setupMock: func(ctx context.Context) *redis.Client {
 				mock := testutil.InitMockRedis(t)
-				// Pre-populate Redis with test data (using same TTL as production)
-				mock.Set(t.Context(), "url_exists", "https://x.com", urlExpTime)
+				mock.Set(ctx, "url_exists", "https://x.com", urlExpTime)
 				return mock
 			},
 			code:        "url_exists",
 			expectedURL: "https://x.com",
-			expectedErr: nil, // No error expected
+			expectedErr: nil,
 		},
 		{
 			name: "URL not found",
-			setupMock: func() *redis.Client {
-				mock := testutil.InitMockRedis(t)
-				return mock
+			setupMock: func(ctx context.Context) *redis.Client {
+				return testutil.InitMockRedis(t)
 			},
 			code:        "url_not_exists",
 			expectedURL: "",
-			expectedErr: redis.Nil, // Redis raises error
+			expectedErr: redis.Nil,
 		},
 	}
 
@@ -98,7 +95,7 @@ func TestUrlStorage_GetURL(t *testing.T) {
 			t.Parallel()
 			ctx := t.Context()
 
-			redisMock := tc.setupMock()
+			redisMock := tc.setupMock(ctx)
 			testRepo := NewUrlStorage(redisMock)
 
 			url, err := testRepo.GetURL(ctx, tc.code)
@@ -113,14 +110,14 @@ func TestUrlStorage_StoreURLIfNotExists(t *testing.T) {
 
 	testCases := []struct {
 		name           string
-		setupMock      func() *redis.Client
+		setupMock      func(ctx context.Context) *redis.Client
 		code           string
 		expectedStored bool
 		expectedErr    error
 	}{
 		{
 			name: "code not exists",
-			setupMock: func() *redis.Client {
+			setupMock: func(ctx context.Context) *redis.Client {
 				return testutil.InitMockRedis(t)
 			},
 			code:           "newcode1",
@@ -129,9 +126,9 @@ func TestUrlStorage_StoreURLIfNotExists(t *testing.T) {
 		},
 		{
 			name: "code already exists",
-			setupMock: func() *redis.Client {
+			setupMock: func(ctx context.Context) *redis.Client {
 				mock := testutil.InitMockRedis(t)
-				mock.Set(t.Context(), "existcode", "https://x.com", urlExpTime)
+				mock.Set(ctx, "existcode", "https://x.com", urlExpTime)
 				return mock
 			},
 			code:           "existcode",
@@ -145,7 +142,7 @@ func TestUrlStorage_StoreURLIfNotExists(t *testing.T) {
 			t.Parallel()
 			ctx := t.Context()
 
-			redisMock := tc.setupMock()
+			redisMock := tc.setupMock(ctx)
 			testRepo := NewUrlStorage(redisMock)
 
 			stored, err := testRepo.StoreURLIfNotExists(ctx, tc.code, "https://example.com", urlExpTime)
