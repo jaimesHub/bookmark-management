@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jaimesHub/bookmark-management/internal/api"
 	"github.com/jaimesHub/bookmark-management/internal/service"
+	pkgredis "github.com/jaimesHub/bookmark-management/pkg/redis"
 	"github.com/kelseyhightower/envconfig"
 )
 
@@ -38,7 +39,13 @@ func main() {
 		svcCfg.InstanceID = uuid.New().String()
 	}
 
-	app := api.NewEngine(cfg, &svcCfg)
+	// create redis client
+	redisClient, err := pkgredis.NewClient("")
+	if err != nil {
+		panic(err)
+	}
+
+	app := api.NewEngine(cfg, &svcCfg, redisClient)
 
 	err = app.Start()
 	if err != nil {

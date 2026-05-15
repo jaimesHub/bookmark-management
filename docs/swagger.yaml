@@ -1,4 +1,15 @@
 definitions:
+  handler.ShortenRequest:
+    properties:
+      exp:
+        minimum: 1
+        type: integer
+      url:
+        type: string
+    required:
+    - exp
+    - url
+    type: object
   service.Response:
     properties:
       instance_id:
@@ -34,4 +45,41 @@ paths:
       summary: Check health
       tags:
       - health
+  /v1/links/shorten:
+    post:
+      consumes:
+      - application/json
+      description: Generates a 7-character alphanumeric code for the given URL and
+        stores it in Redis with the specified TTL
+      parameters:
+      - description: Shorten URL request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.ShortenRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Shorten a URL
+      tags:
+      - links
 swagger: "2.0"
