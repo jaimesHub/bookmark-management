@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jaimesHub/bookmark-management/internal/service"
+	"github.com/rs/zerolog/log"
 )
 
 // Shorten defines the interface for shorten URL HTTP request handling.
@@ -55,6 +56,11 @@ func (s *shortenHandler) ShortenURL(c *gin.Context) {
 		time.Duration(req.Exp)*time.Second,
 	)
 	if err != nil {
+		log.Error().
+			Err(err).
+			Str("path", c.Request.URL.Path).
+			Str("method", c.Request.Method).
+			Msg("shorten url failed")
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
