@@ -1,4 +1,4 @@
-COVERAGE_EXCLUDE   = mocks|main.go|test|pkg/redis|pkg/logger
+COVERAGE_EXCLUDE   = mocks|main.go|test|pkg/
 COVERAGE_THRESHOLD = 80
 .PHONY: help run test test-race test-service test-repository test-handler test-coverage build clean install-tools swag fmt generate
 
