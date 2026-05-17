@@ -1,6 +1,12 @@
 COVERAGE_EXCLUDE   = mocks|main.go|test|pkg/
 COVERAGE_THRESHOLD = 80
-.PHONY: help run test test-race test-service test-repository test-handler test-coverage build clean install-tools swag fmt generate
+
+# Docker config
+DOCKER_IMAGE := bookmark-api
+DOCKER_TAG   := latest
+
+.PHONY: help run test test-race test-service test-repository test-handler test-coverage build clean install-tools swag fmt generate \
+        docker-build docker-run docker-stop docker-logs docker-ps
 
 help:
 	@echo "Available targets:"
@@ -17,6 +23,13 @@ help:
 	@echo "  make generate             - Run go generate (regenerate mocks, etc.)"
 	@echo "  make install-tools        - Install development tools"
 	@echo "  make fmt                  - Format code"
+	@echo ""
+	@echo "  Docker:"
+	@echo "  make docker-build         - Build app image via compose"
+	@echo "  make docker-run           - Start app + Redis via compose (requires .env)"
+	@echo "  make docker-stop          - Stop and remove compose services"
+	@echo "  make docker-logs          - Tail app container logs"
+	@echo "  make docker-ps            - List running compose services"
 
 run: swag
 	go run ./cmd/api
@@ -71,3 +84,23 @@ install-tools:
 fmt:
 	go fmt ./...
 	goimports -w .
+
+# ─── Docker targets ─────────────────────────────────────────────
+docker-build:
+	docker compose build
+	@echo "✅ Image built: $(DOCKER_IMAGE):$(DOCKER_TAG)"
+
+docker-run:
+	@[ -f .env ] || { echo "❌ .env not found. Run: cp .env.example .env"; exit 1; }
+	docker compose up -d
+	@echo "✅ Services started. App: http://localhost:8080 | Logs: make docker-logs"
+
+docker-stop:
+	docker compose down
+	@echo "✅ Services stopped"
+
+docker-logs:
+	docker compose logs -f app
+
+docker-ps:
+	docker compose ps
