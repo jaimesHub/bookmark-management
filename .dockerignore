@@ -1,0 +1,37 @@
+# Git
+.git/
+.gitignore
+.github/
+
+# IDE / editor
+.idea/
+*.swp
+*.swo
+*~
+.vscode/
+
+# Build outputs
+bin/
+
+# Test coverage
+coverage.out
+coverage.tmp
+coverage.html
+
+# Local scratch / manual test main
+cmd/test/
+
+# Docs (Dockerfile/compose/README not needed inside image)
+README.md
+Dockerfile
+.dockerignore
+docker-compose.yml
+.env
+.env.example
+
+# Claude Code / agent config
+.claude/
+CLAUDE.md
+
+# Course assignments (not part of app)
+assignments/
