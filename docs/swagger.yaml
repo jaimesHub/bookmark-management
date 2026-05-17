@@ -45,6 +45,36 @@ paths:
       summary: Check health
       tags:
       - health
+  /v1/links/redirect/{code}:
+    get:
+      description: Looks up the shortened code in storage and issues an HTTP 302 redirect
+        to the original URL.
+      parameters:
+      - description: Shortened code
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Found
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Redirect to original URL
+      tags:
+      - links
   /v1/links/shorten:
     post:
       consumes:
