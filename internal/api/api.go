@@ -72,12 +72,14 @@ func (e *engine) initRoutes() {
 	// shorten URL
 	shortenSvc := service.NewShortenService(urlRepo)
 	shortenHandler := handler.NewShorten(shortenSvc)
+	redirectHandler := handler.NewRedirect(shortenSvc)
 
 	v1 := e.app.Group("/v1")
 	{
 		links := v1.Group("/links")
 		{
 			links.POST("/shorten", shortenHandler.ShortenURL)
+			links.GET("/redirect/:code", redirectHandler.Redirect)
 		}
 
 	}
