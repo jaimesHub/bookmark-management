@@ -19,3 +19,6 @@ coverage.html
 # Local scratch / manual test files
 cmd/test/
 pkg/redis/mock.go
+
+# Environment file (use .env.example as template)
+.env
