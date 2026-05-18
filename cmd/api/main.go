@@ -37,7 +37,7 @@ func main() {
 	}
 
 	log.Info().
-		Str("app_port", cfg.AppPort).
+		Str("container_port", cfg.ContainerPort).
 		Str("service_name", svcCfg.ServiceName).
 		Str("instance_id", svcCfg.InstanceID).
 		Str("env", cfg.Env).

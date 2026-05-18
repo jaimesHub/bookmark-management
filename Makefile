@@ -93,7 +93,7 @@ docker-build:
 docker-run:
 	@[ -f .env ] || { echo "❌ .env not found. Run: cp .env.example .env"; exit 1; }
 	docker compose up -d
-	@echo "✅ Services started. App: http://localhost:8080 | Logs: make docker-logs"
+	@. ./.env && echo "✅ Services started. App: http://localhost:$$HOST_PORT | Logs: make docker-logs"
 
 docker-stop:
 	docker compose down

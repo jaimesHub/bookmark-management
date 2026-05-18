@@ -28,7 +28,7 @@ bookmark-management/
 ├── internal/
 │   ├── api/
 │   │   ├── api.go                       # Gin engine, route registration
-│   │   └── config.go                    # API-level config (APP_PORT, SWAGGER_ENABLED, APP_ENV, LOG_LEVEL)
+│   │   └── config.go                    # API-level config (CONTAINER_PORT, SWAGGER_ENABLED, APP_ENV, LOG_LEVEL)
 │   ├── handler/
 │   │   ├── healthcheck.go               # HTTP handler — GET /health-check
 │   │   ├── healthcheck_test.go
@@ -79,11 +79,12 @@ bookmark-management/
 
 All configuration is read from environment variables at startup — no config files.
 
-**Note**: API-layer vars use prefix `API_` (envconfig `Process("api", cfg)` adds it). Service + Redis vars use no prefix.
+**Note**: API-layer vars use prefix `API_` (envconfig `Process("api", cfg)` adds it). Service + Redis vars use no prefix. `HOST_PORT` is consumed by docker-compose only — not read by the Go app.
 
 | Variable                | Default              | Description                                                       |
 |-------------------------|----------------------|-------------------------------------------------------------------|
-| `API_APP_PORT`          | `8080`               | Port the HTTP server listens on                                   |
+| `HOST_PORT`             | `8080`               | Docker-only: host-side port published by compose (`HOST_PORT:CONTAINER_PORT`). Access via `http://localhost:$HOST_PORT`. |
+| `API_CONTAINER_PORT`    | `8080`               | Port the HTTP server listens on inside the container              |
 | `API_APP_ENV`           | `dev`                | `dev` = console pretty log, `prod` = JSON 1-line                  |
 | `API_LOG_LEVEL`         | `info`               | `debug` \| `info` \| `warn` \| `error`                            |
 | `API_SWAGGER_ENABLED`   | `false`              | Set to `true` to expose `/swagger/*` UI                           |
@@ -172,7 +173,8 @@ make docker-stop
 **Docker setup details**:
 - Multi-stage build: `golang:1.26-alpine` builder → `alpine:3.20` runtime (image ~60MB)
 - Non-root user `app` inside container
-- `HEALTHCHECK` directive uses `/health-check` endpoint — container reports `healthy` once app responds
+- **Port** is configured at the compose layer (not in `Dockerfile`) — image stays port-agnostic. Compose maps `${HOST_PORT}:${API_CONTAINER_PORT}` from `.env`; both default to `8080` when unset.
+- **Healthcheck** also lives in `docker-compose.yml` and hits `http://localhost:${API_CONTAINER_PORT}/health-check`. Container reports `healthy` once the app responds.
 - Compose service name `redis` is resolved automatically; app talks to Redis via `REDIS_ADDR=redis:6379` (overridden in `docker-compose.yml`)
 
 ### Build

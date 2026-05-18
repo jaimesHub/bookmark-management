@@ -32,12 +32,9 @@ COPY --from=builder /out/api /usr/local/bin/api
 
 USER app
 
-EXPOSE 8080
-
-# HEALTHCHECK — reuse /health-check endpoint from Lec 1.
-# wget is built into alpine (busybox).
-# Compose `depends_on.condition: service_healthy` relies on this directive.
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget -qO- http://localhost:8080/health-check || exit 1
+# Port (EXPOSE) and HEALTHCHECK are intentionally configured at the
+# orchestration layer (docker-compose.yml) rather than baked into the
+# image — keeps the image port-agnostic and lets compose interpolate
+# ${HOST_PORT}/${API_CONTAINER_PORT} from .env at runtime.
 
 ENTRYPOINT ["/usr/local/bin/api"]

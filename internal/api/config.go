@@ -5,7 +5,10 @@ import "github.com/kelseyhightower/envconfig"
 
 // Config holds API-layer configuration loaded from environment variables.
 type Config struct {
-	AppPort        string `default:"8080" envconfig:"APP_PORT"`
+	// ContainerPort is the port the HTTP server listens on inside the container.
+	// Wire env var: API_CONTAINER_PORT. docker-compose maps host port (HOST_PORT
+	// in .env) to this value; the two may differ.
+	ContainerPort  string `default:"8080" envconfig:"CONTAINER_PORT"`
 	SwaggerEnabled bool   `default:"false" envconfig:"SWAGGER_ENABLED"`
 
 	// Logger config

@@ -18,7 +18,10 @@ services:
     image: bookmark-api:latest
     container_name: bookmark-api
     ports:
-      - "8080:8080"
+      # host:container — HOST_PORT (machine-side, used by curl/browser),
+      # API_CONTAINER_PORT (container-side, where the app listens).
+      # Both default to 8080 when .env is missing the values.
+      - "${HOST_PORT:-8080}:${API_CONTAINER_PORT:-8080}"
     env_file:
       - .env
     environment:
@@ -29,4 +32,12 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    # Healthcheck lives here (not in Dockerfile) so the port can be configured
+    # via .env without rebuilding the image. wget is built into alpine (busybox).
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:${API_CONTAINER_PORT:-8080}/health-check"]
+      interval: 30s
+      timeout: 3s
+      start_period: 5s
+      retries: 3
     restart: unless-stopped

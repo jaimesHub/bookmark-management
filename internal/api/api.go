@@ -46,7 +46,7 @@ func NewEngine(cfg *Config, svcCfg *service.Config, redisClient *redis.Client) E
 
 // Start starts the API server on the configured port.
 func (e *engine) Start() error {
-	return e.app.Run(fmt.Sprintf(":%s", e.cfg.AppPort))
+	return e.app.Run(fmt.Sprintf(":%s", e.cfg.ContainerPort))
 }
 
 // ServeHTTP implements the http.Handler interface for testing and request processing.
