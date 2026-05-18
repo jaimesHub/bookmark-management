@@ -1,13 +1,13 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/google/uuid"
 	"github.com/jaimesHub/bookmark-management/internal/api"
 	"github.com/jaimesHub/bookmark-management/internal/service"
+	"github.com/jaimesHub/bookmark-management/pkg/logger"
 	pkgredis "github.com/jaimesHub/bookmark-management/pkg/redis"
 	"github.com/kelseyhightower/envconfig"
+	"github.com/rs/zerolog/log"
 )
 
 // @title           Bookmark Management API
@@ -16,39 +16,42 @@ import (
 // @host            localhost:8080
 // @BasePath
 func main() {
-	// create api config
+	// Load API config first (chứa APP_ENV + LOG_LEVEL)
 	cfg, err := api.NewConfig()
 	if err != nil {
+		// Logger chưa init → dùng panic là chấp nhận được ở bootstrap stage này
 		panic(err)
 	}
 
-	// create service config
+	// Init logger NGAY SAU khi load config — mọi log sau đây sẽ structured
+	logger.Init(cfg.Env, cfg.LogLevel)
+
 	var svcCfg service.Config
-	err = envconfig.Process("", &svcCfg)
-	if err != nil {
-		panic(err)
+	if err := envconfig.Process("", &svcCfg); err != nil {
+		log.Fatal().Err(err).Msg("failed to load service config")
 	}
-
-	// Log configuration
-	fmt.Printf("APP_PORT: %s\n", cfg.AppPort)
-	fmt.Printf("SERVICE_NAME: %s\n", svcCfg.ServiceName)
-	fmt.Printf("INSTANCE_ID: %s\n", svcCfg.InstanceID)
 
 	// UUID fallback
 	if svcCfg.InstanceID == "" {
 		svcCfg.InstanceID = uuid.New().String()
 	}
 
-	// create redis client
+	log.Info().
+		Str("container_port", cfg.ContainerPort).
+		Str("service_name", svcCfg.ServiceName).
+		Str("instance_id", svcCfg.InstanceID).
+		Str("env", cfg.Env).
+		Str("log_level", cfg.LogLevel).
+		Msg("configuration loaded")
+
 	redisClient, err := pkgredis.NewClient("")
 	if err != nil {
-		panic(err)
+		log.Fatal().Err(err).Msg("failed to create redis client")
 	}
 
 	app := api.NewEngine(cfg, &svcCfg, redisClient)
 
-	err = app.Start()
-	if err != nil {
-		panic(err)
+	if err := app.Start(); err != nil {
+		log.Fatal().Err(err).Msg("api server stopped with error")
 	}
 }

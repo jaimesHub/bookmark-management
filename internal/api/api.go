@@ -46,7 +46,7 @@ func NewEngine(cfg *Config, svcCfg *service.Config, redisClient *redis.Client) E
 
 // Start starts the API server on the configured port.
 func (e *engine) Start() error {
-	return e.app.Run(fmt.Sprintf(":%s", e.cfg.AppPort))
+	return e.app.Run(fmt.Sprintf(":%s", e.cfg.ContainerPort))
 }
 
 // ServeHTTP implements the http.Handler interface for testing and request processing.
@@ -72,12 +72,14 @@ func (e *engine) initRoutes() {
 	// shorten URL
 	shortenSvc := service.NewShortenService(urlRepo)
 	shortenHandler := handler.NewShorten(shortenSvc)
+	redirectHandler := handler.NewRedirect(shortenSvc)
 
 	v1 := e.app.Group("/v1")
 	{
 		links := v1.Group("/links")
 		{
 			links.POST("/shorten", shortenHandler.ShortenURL)
+			links.GET("/redirect/:code", redirectHandler.Redirect)
 		}
 
 	}

@@ -2,11 +2,17 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/jaimesHub/bookmark-management/pkg/stringutils"
+	"github.com/redis/go-redis/v9"
 )
+
+// ErrCodeNotFound is returned when a shortened code does not exist in storage.
+// Handlers compare via errors.Is to map this to HTTP 404 without importing the storage package.
+var ErrCodeNotFound = errors.New("code not found")
 
 // example: https://raviatluri.in/articles/using-mockery-go-generate
 //
@@ -30,6 +36,7 @@ const (
 // Callers supply the original URL and desired TTL; the service returns an opaque short code.
 type ShortenService interface {
 	ShortenURL(ctx context.Context, url string, exp time.Duration) (string, error)
+	GetOriginalURL(ctx context.Context, code string) (string, error)
 }
 
 type shortenService struct {
@@ -59,4 +66,17 @@ func (s *shortenService) ShortenURL(ctx context.Context, url string, exp time.Du
 		}
 	}
 	return "", fmt.Errorf("failed to generate unique code after %d attempts", maxRetries)
+}
+
+// GetOriginalURL resolves a shortened code back to its original URL.
+// Returns ErrCodeNotFound when the code does not exist; other errors are wrapped with context.
+func (s *shortenService) GetOriginalURL(ctx context.Context, code string) (string, error) {
+	url, err := s.repo.GetURL(ctx, code)
+	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return "", ErrCodeNotFound
+		}
+		return "", fmt.Errorf("get original url: %w", err)
+	}
+	return url, nil
 }

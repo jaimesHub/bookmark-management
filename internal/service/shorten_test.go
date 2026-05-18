@@ -8,6 +8,7 @@ import (
 
 	"github.com/jaimesHub/bookmark-management/internal/service"
 	"github.com/jaimesHub/bookmark-management/internal/service/mocks"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -109,6 +110,77 @@ func TestShortenURL(t *testing.T) {
 				assert.Regexp(t, "^[a-zA-Z0-9]+$", code)
 				assert.NoError(t, err)
 				assert.Equal(t, tc.expectedCodeLength, len(code))
+			}
+		})
+	}
+}
+
+func TestShortenService_GetOriginalURL(t *testing.T) {
+	t.Parallel()
+
+	repoErr := errors.New("redis connection failed")
+
+	testCases := []struct {
+		name string
+
+		inputCode string
+
+		mockSetup func(ctx context.Context, m *mocks.URLStorage)
+
+		expectedURL    string
+		expectedErrIs  error  // for errors.Is comparison; nil if not applicable
+		expectedErrSub string // substring of error message; "" if not applicable
+	}{
+		{
+			name:      "success",
+			inputCode: "abc1234",
+			mockSetup: func(ctx context.Context, m *mocks.URLStorage) {
+				m.On("GetURL", ctx, "abc1234").Return("https://example.com", nil)
+			},
+			expectedURL: "https://example.com",
+		},
+		{
+			name:      "not found",
+			inputCode: "missing",
+			mockSetup: func(ctx context.Context, m *mocks.URLStorage) {
+				m.On("GetURL", ctx, "missing").Return("", redis.Nil)
+			},
+			expectedURL:   "",
+			expectedErrIs: service.ErrCodeNotFound,
+		},
+		{
+			name:      "repo error wrapped",
+			inputCode: "abc1234",
+			mockSetup: func(ctx context.Context, m *mocks.URLStorage) {
+				m.On("GetURL", ctx, "abc1234").Return("", repoErr)
+			},
+			expectedURL:    "",
+			expectedErrIs:  repoErr,
+			expectedErrSub: "get original url",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			ctx := t.Context()
+
+			mockRepo := mocks.NewURLStorage(t)
+			tc.mockSetup(ctx, mockRepo)
+
+			svc := service.NewShortenService(mockRepo)
+
+			url, err := svc.GetOriginalURL(ctx, tc.inputCode)
+
+			assert.Equal(t, tc.expectedURL, url)
+
+			if tc.expectedErrIs == nil {
+				assert.NoError(t, err)
+				return
+			}
+			assert.ErrorIs(t, err, tc.expectedErrIs)
+			if tc.expectedErrSub != "" {
+				assert.Contains(t, err.Error(), tc.expectedErrSub)
 			}
 		})
 	}
