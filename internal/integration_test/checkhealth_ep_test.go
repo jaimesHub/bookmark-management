@@ -32,7 +32,7 @@ func TestCheckHealthEndpoint(t *testing.T) {
 				return respRecorder
 			},
 			expectedStatusCode:   http.StatusOK,
-			expectedResponseBody: `{"message":"OK", "service_name": "bookmark_service", "instance_id": "550e8400-e29b-41d4-a716-446655440000"}`,
+			expectedResponseBody: `{"message":"OK", "service_name": "bookmark_service", "instance_id": "550e8400-e29b-41d4-a716-446655440000", "hostname": "integration-test-host"}`,
 		},
 		{
 			name: "Not found case",
@@ -59,6 +59,7 @@ func TestCheckHealthEndpoint(t *testing.T) {
 			svcCfg := service.Config{
 				ServiceName: "bookmark_service",
 				InstanceID:  "550e8400-e29b-41d4-a716-446655440000",
+				Hostname:    "integration-test-host",
 			}
 			gin.SetMode(gin.TestMode)
 			testAPI := api.NewEngine(cfg, &svcCfg, testutil.InitMockRedis(t))

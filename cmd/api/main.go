@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+
 	"github.com/google/uuid"
 	"github.com/jaimesHub/bookmark-management/internal/api"
 	"github.com/jaimesHub/bookmark-management/internal/service"
@@ -36,10 +38,22 @@ func main() {
 		svcCfg.InstanceID = uuid.New().String()
 	}
 
+	// Hostname fallback: nếu APP_HOSTNAME không set, dùng os.Hostname() để
+	// vẫn định danh được instance khi chạy local (chưa cần config thêm).
+	if svcCfg.Hostname == "" {
+		if h, err := os.Hostname(); err == nil {
+			svcCfg.Hostname = h
+		} else {
+			svcCfg.Hostname = "unknown"
+			log.Warn().Err(err).Msg("os.Hostname() failed, using 'unknown'")
+		}
+	}
+
 	log.Info().
 		Str("container_port", cfg.ContainerPort).
 		Str("service_name", svcCfg.ServiceName).
 		Str("instance_id", svcCfg.InstanceID).
+		Str("hostname", svcCfg.Hostname).
 		Str("env", cfg.Env).
 		Str("log_level", cfg.LogLevel).
 		Msg("configuration loaded")

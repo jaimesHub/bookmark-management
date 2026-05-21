@@ -1,12 +1,21 @@
 COVERAGE_EXCLUDE   = mocks|main.go|test|pkg/
 COVERAGE_THRESHOLD = 80
 
-# Docker config
+# ─── Docker image config ──────────────────────────────────────────
+# DOCKER_USER : Docker Hub username (override with `make docker-build DOCKER_USER=foo`)
+# IMAGE_NAME  : repo name on Docker Hub
+# GIT_SHA     : short commit SHA — used to dual-tag image (rollback-able)
+DOCKER_USER  ?= jaimeshub
+IMAGE_NAME   ?= bookmark-app
 DOCKER_IMAGE := bookmark-api
 DOCKER_TAG   := latest
+GIT_SHA      := $(shell git rev-parse --short HEAD 2>/dev/null || echo "dev")
+IMAGE_SHA    := $(DOCKER_USER)/$(IMAGE_NAME):$(GIT_SHA)
+IMAGE_LATEST := $(DOCKER_USER)/$(IMAGE_NAME):latest
 
 .PHONY: help run test test-race test-service test-repository test-handler test-coverage build clean install-tools swag fmt generate \
-        docker-build docker-run docker-stop docker-logs docker-ps
+        docker-compose-build docker-run docker-stop docker-logs docker-ps \
+        docker-build docker-push docker-run-local docker-clean
 
 help:
 	@echo "Available targets:"
@@ -24,12 +33,18 @@ help:
 	@echo "  make install-tools        - Install development tools"
 	@echo "  make fmt                  - Format code"
 	@echo ""
-	@echo "  Docker:"
-	@echo "  make docker-build         - Build app image via compose"
+	@echo "  Docker (compose, local dev):"
+	@echo "  make docker-compose-build - Build app image via compose"
 	@echo "  make docker-run           - Start app + Redis via compose (requires .env)"
 	@echo "  make docker-stop          - Stop and remove compose services"
 	@echo "  make docker-logs          - Tail app container logs"
 	@echo "  make docker-ps            - List running compose services"
+	@echo ""
+	@echo "  Docker (Hub publish — dual-tag SHA + latest):"
+	@echo "  make docker-build         - Build image $(IMAGE_SHA) + $(IMAGE_LATEST)"
+	@echo "  make docker-push          - Push both tags to Docker Hub (run docker login first)"
+	@echo "  make docker-run-local     - Run latest tag against Redis on host (smoke test)"
+	@echo "  make docker-clean         - Remove local image tags"
 
 run: swag
 	go run ./cmd/api
@@ -85,8 +100,8 @@ fmt:
 	go fmt ./...
 	goimports -w .
 
-# ─── Docker targets ─────────────────────────────────────────────
-docker-build:
+# ─── Docker targets (compose, local dev) ────────────────────────
+docker-compose-build:
 	docker compose build
 	@echo "✅ Image built: $(DOCKER_IMAGE):$(DOCKER_TAG)"
 
@@ -104,3 +119,38 @@ docker-logs:
 
 docker-ps:
 	docker compose ps
+
+# ─── Docker targets (Hub publish — dual-tag SHA + latest) ───────
+# `:latest` alone is an anti-pattern (no rollback, no traceability).
+# Tag with both `<git-sha>` and `latest` so we can pin VM deploys to a SHA
+# and still let "latest" point at the newest known-good build.
+docker-build:
+	@echo ">> Building $(IMAGE_SHA) + $(IMAGE_LATEST)"
+	docker build \
+	  -t $(IMAGE_SHA) \
+	  -t $(IMAGE_LATEST) \
+	  .
+	@echo ">> Image size:"
+	@docker images $(IMAGE_SHA) --format "  {{.Repository}}:{{.Tag}} = {{.Size}}"
+
+docker-push:
+	@echo ">> Verify Docker Hub login..."
+# 	@docker info 2>/dev/null | grep -q "Username" || { echo "❌ Not logged in. Run: docker login"; exit 1; }
+	@cat ~/.docker/config.json 2>/dev/null | grep -q '"https://index.docker.io/v1/"' || \
+    { echo "❌ Not logged in to Docker Hub. Run: docker login"; exit 1; }
+	@echo ">> Pushing $(IMAGE_SHA)"
+	docker push $(IMAGE_SHA)
+	@echo ">> Pushing $(IMAGE_LATEST)"
+	docker push $(IMAGE_LATEST)
+	@echo "✅ Pushed. Verify: https://hub.docker.com/r/$(DOCKER_USER)/$(IMAGE_NAME)/tags"
+
+docker-run-local:
+	docker run --rm -it \
+	  -e REDIS_ADDR=host.docker.internal:6379 \
+	  -e SERVICE_NAME=bookmark-local \
+	  -e APP_HOSTNAME=docker-local-test \
+	  -p 8080:8080 \
+	  $(IMAGE_LATEST)
+
+docker-clean:
+	-docker rmi $(IMAGE_SHA) $(IMAGE_LATEST) 2>/dev/null || true

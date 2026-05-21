@@ -37,6 +37,7 @@ func TestHealthCheckHandler_CheckHealth(t *testing.T) {
 					Message:     "OK",
 					ServiceName: "bookmark_service",
 					InstanceID:  "550e8400-e29b-41d4-a716-446655440000",
+					Hostname:    "test-host-01",
 				}, nil)
 				return serviceMock
 			},
@@ -45,6 +46,7 @@ func TestHealthCheckHandler_CheckHealth(t *testing.T) {
 				Message:     "OK",
 				ServiceName: "bookmark_service",
 				InstanceID:  "550e8400-e29b-41d4-a716-446655440000",
+				Hostname:    "test-host-01",
 			},
 		},
 		{
@@ -86,6 +88,7 @@ func TestHealthCheckHandler_CheckHealth(t *testing.T) {
 				assert.Equal(t, tc.expectedResponse.Message, resp.Message)
 				assert.Equal(t, tc.expectedResponse.ServiceName, resp.ServiceName)
 				assert.Equal(t, tc.expectedResponse.InstanceID, resp.InstanceID)
+				assert.Equal(t, tc.expectedResponse.Hostname, resp.Hostname)
 			}
 
 			if tc.expectedStatus == http.StatusInternalServerError {
