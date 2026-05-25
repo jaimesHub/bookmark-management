@@ -10,6 +10,7 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/jaimesHub/bookmark-management/internal/handler"
 	"github.com/jaimesHub/bookmark-management/internal/repository"
@@ -56,6 +57,8 @@ func (e *engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 // initRoutes initializes all API routes and handlers.
 func (e *engine) initRoutes() {
+	e.app.Use(cors.Default())
+
 	urlRepo := repository.NewUrlStorage(e.redisClient)
 	pingRepo := repository.NewPingRepo(e.redisClient)
 

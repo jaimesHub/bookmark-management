@@ -12,6 +12,8 @@ definitions:
     type: object
   service.Response:
     properties:
+      hostname:
+        type: string
       instance_id:
         type: string
       message:

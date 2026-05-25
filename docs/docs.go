@@ -164,6 +164,9 @@ const docTemplate = `{
         "service.Response": {
             "type": "object",
             "properties": {
+                "hostname": {
+                    "type": "string"
+                },
                 "instance_id": {
                     "type": "string"
                 },
