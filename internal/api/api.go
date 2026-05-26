@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	_ "github.com/jaimesHub/bookmark-management/docs"
+	"github.com/jaimesHub/bookmark-management/docs"
 	"github.com/redis/go-redis/v9"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -67,6 +67,9 @@ func (e *engine) initRoutes() {
 	checkHealthHandler := handler.NewHealthCheck(checkHealthSvc)
 
 	if e.cfg.SwaggerEnabled {
+		// Override host hardcoded "localhost:8080" trong docs/docs.go.
+		// Empty → Swagger UI dùng same-origin (browser host) → request đi qua nginx.
+		docs.SwaggerInfo.Host = e.cfg.SwaggerHost
 		e.app.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	}
 

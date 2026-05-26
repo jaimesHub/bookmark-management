@@ -10,6 +10,10 @@ type Config struct {
 	// in .env) to this value; the two may differ.
 	ContainerPort  string `default:"8080" envconfig:"CONTAINER_PORT"`
 	SwaggerEnabled bool   `default:"false" envconfig:"SWAGGER_ENABLED"`
+	// SwaggerHost overrides docs.SwaggerInfo.Host at runtime.
+	// Empty string → Swagger UI uses same-origin (recommended khi đi qua nginx).
+	// Wire env var: API_SWAGGER_HOST.
+	SwaggerHost string `default:"" envconfig:"SWAGGER_HOST"`
 
 	// Logger config
 	Env      string `envconfig:"APP_ENV" default:"dev"`
