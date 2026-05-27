@@ -15,7 +15,7 @@ IMAGE_LATEST := $(DOCKER_USER)/$(IMAGE_NAME):latest
 
 .PHONY: help run test test-race test-service test-repository test-handler test-coverage build clean install-tools swag fmt generate \
         docker-compose-build docker-run docker-stop docker-logs docker-ps \
-        docker-build docker-push docker-run-local docker-clean
+        docker-build docker-push docker-buildx-multiarch-push docker-run-local docker-clean
 
 help:
 	@echo "Available targets:"
@@ -41,10 +41,11 @@ help:
 	@echo "  make docker-ps            - List running compose services"
 	@echo ""
 	@echo "  Docker (Hub publish — dual-tag SHA + latest):"
-	@echo "  make docker-build         - Build image $(IMAGE_SHA) + $(IMAGE_LATEST)"
-	@echo "  make docker-push          - Push both tags to Docker Hub (run docker login first)"
-	@echo "  make docker-run-local     - Run latest tag against Redis on host (smoke test)"
-	@echo "  make docker-clean         - Remove local image tags"
+	@echo "  make docker-build                 - Build image (host arch) $(IMAGE_SHA) + $(IMAGE_LATEST)"
+	@echo "  make docker-push                  - Push both tags to Docker Hub (run docker login first)"
+	@echo "  make docker-buildx-multiarch-push - ⭐ Build amd64+arm64 multi-arch + push (RECOMMENDED khi dev Mac M-series)"
+	@echo "  make docker-run-local             - Run latest tag against Redis on host (smoke test)"
+	@echo "  make docker-clean                 - Remove local image tags"
 
 run: swag
 	go run ./cmd/api
@@ -143,6 +144,32 @@ docker-push:
 	@echo ">> Pushing $(IMAGE_LATEST)"
 	docker push $(IMAGE_LATEST)
 	@echo "✅ Pushed. Verify: https://hub.docker.com/r/$(DOCKER_USER)/$(IMAGE_NAME)/tags"
+
+# ─── Docker buildx (multi-arch publish) ──────────────────────────
+# Build amd64 + arm64 cùng lúc + push trực tiếp lên Hub trong 1 lệnh.
+# Image chạy native cả Mac arm64 (dev local) + VM amd64 (prod) — không qua qemu emulation.
+# RECOMMENDED khi `bookmark-deployment/docker-compose.yml` KHÔNG có `platform:` pin
+# (Docker tự pick native arch từ manifest list).
+# Trade-off: build chậm hơn ~1.5–2x vs single-arch (build 2 manifest), nhưng one-time cost
+# đổi lấy dev experience nhanh hơn về sau (no qemu).
+# Ref: assignments/Lecture-04-docker-rebuild-publish.md § Phase 3c (Option C)
+docker-buildx-multiarch-push:
+	@echo ">> Verify Docker Hub login..."
+	@cat ~/.docker/config.json 2>/dev/null | grep -q '"https://index.docker.io/v1/"' || \
+    { echo "❌ Not logged in to Docker Hub. Run: docker login"; exit 1; }
+	@echo ">> Verify buildx builder available..."
+	@docker buildx inspect default >/dev/null 2>&1 || \
+    { echo "❌ buildx default builder not found. Run: docker buildx create --use --name multiarch"; exit 1; }
+	@echo ">> Building amd64+arm64 multi-arch + push $(IMAGE_SHA) + $(IMAGE_LATEST)"
+	docker buildx build \
+	  --platform linux/amd64,linux/arm64 \
+	  -t $(IMAGE_SHA) \
+	  -t $(IMAGE_LATEST) \
+	  --push \
+	  .
+	@echo "✅ Pushed multi-arch image. Verify with:"
+	@echo "   docker buildx imagetools inspect $(IMAGE_SHA) | grep Platform:"
+	@echo "   Kỳ vọng 2 dòng: linux/amd64 + linux/arm64 (bỏ qua unknown/unknown — SLSA attestation)"
 
 docker-run-local:
 	docker run --rm -it \

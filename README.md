@@ -338,10 +338,48 @@ Codegen / Docs:
   make install-tools    Install swag, mockery v2, goimports
   make fmt              Format code (go fmt + goimports)
 
-Docker:
-  make docker-build     Build app image via compose
-  make docker-run       Start app + Redis via compose (requires .env)
-  make docker-stop      Stop and remove compose services
-  make docker-logs      Tail app container logs
-  make docker-ps        List running compose services
+Docker (compose, local dev):
+  make docker-compose-build         Build app image via docker-compose (local stack)
+  make docker-run                   Start app + Redis via compose (requires .env)
+  make docker-stop                  Stop and remove compose services
+  make docker-logs                  Tail app container logs
+  make docker-ps                    List running compose services
+
+Docker (Hub publish — dual-tag SHA + latest):
+  make docker-build                 Build image host arch only (smoke test cùng host)
+  make docker-push                  Push cả 2 tag (SHA + latest) lên Docker Hub
+  make docker-buildx-multiarch-push ⭐ Build amd64+arm64 multi-arch + push (RECOMMENDED khi dev Mac M-series → VM amd64)
+  make docker-run-local             Run latest tag against Redis on host (smoke test)
+  make docker-clean                 Remove local image tags
 ```
+
+### First-time buildx setup (one-time per machine)
+
+Trước khi chạy `make docker-buildx-multiarch-push` lần đầu, bootstrap buildx builder:
+
+```bash
+# Tạo + activate builder "multiarch" hỗ trợ cross-platform
+docker buildx create --use --name multiarch
+docker buildx inspect --bootstrap          # khởi tạo container builder
+
+# Verify
+docker buildx ls
+# NAME/NODE       DRIVER/ENDPOINT             STATUS   PLATFORMS
+# multiarch*      docker-container            running  linux/amd64, linux/arm64, ...
+```
+
+Sau setup, target `docker-buildx-multiarch-push` chạy được cả Mac M-series + Linux.
+
+### Common gotchas khi push lên Hub
+
+| Triệu chứng | Fix |
+|---|---|
+| `❌ Not logged in to Docker Hub` | `docker login` (dùng Personal Access Token thay password) |
+| `❌ buildx default builder not found` | First-time setup: `docker buildx create --use --name multiarch` |
+| `denied: requested access to the resource is denied` | Verify `DOCKER_USER` đúng username Hub của bạn (override: `make ... DOCKER_USER=<your-name>`) |
+| `no matching manifest for linux/amd64` khi VM pull | Build single-arch arm64 (Mac default) — phải dùng `docker-buildx-multiarch-push` |
+
+→ Tham khảo workflow đầy đủ ở repo course `go-ebvn/assignments/`:
+- `Lecture-04-docker-rebuild-publish.md` — iterative rebuild + push workflow
+- `Lecture-04-prd-redeploy.md` — VM redeploy procedure
+- `Lecture-04-pre-submission-checklist.md` — pre-submission cleanup + tag release
