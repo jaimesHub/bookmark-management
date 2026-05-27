@@ -50,11 +50,25 @@ func TestShortenHandler_ShortenURL(t *testing.T) {
 			expectedBody:   `{"code": "abc1234", "message": "Shorten URL generated successfully!"}`,
 		},
 		{
-			name: "bad request",
+			name: "bad request - missing exp",
 			setupRequest: func(ctx *gin.Context) {
 				ctx.Request = httptest.NewRequest(
 					http.MethodPost, "/v1/links/shorten",
 					strings.NewReader(`{"url": "https://example.com"}`),
+				)
+				ctx.Request.Header.Set("Content-Type", "application/json")
+			},
+			setupMockService: func(ctx *gin.Context) *mocks.ShortenService {
+				return mocks.NewShortenService(t)
+			},
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name: "bad request - XSS javascript scheme (DEF-001)",
+			setupRequest: func(ctx *gin.Context) {
+				ctx.Request = httptest.NewRequest(
+					http.MethodPost, "/v1/links/shorten",
+					strings.NewReader(`{"url": "javascript:alert(1)", "exp": 3600}`),
 				)
 				ctx.Request.Header.Set("Content-Type", "application/json")
 			},
