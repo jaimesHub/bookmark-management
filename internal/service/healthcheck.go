@@ -20,6 +20,7 @@ type Pinger interface {
 type healthCheckService struct {
 	serviceName string
 	instanceID  string
+	hostname    string
 	pinger      Pinger
 }
 
@@ -28,6 +29,7 @@ func NewHealthCheck(cfg *Config, pinger Pinger) HealthCheck {
 	return &healthCheckService{
 		serviceName: cfg.ServiceName,
 		instanceID:  cfg.InstanceID,
+		hostname:    cfg.Hostname,
 		pinger:      pinger,
 	}
 }
@@ -37,9 +39,10 @@ type Response struct {
 	Message     string `json:"message"`
 	ServiceName string `json:"service_name"`
 	InstanceID  string `json:"instance_id"`
+	Hostname    string `json:"hostname"`
 }
 
-// Check returns the health status of the service with its name and instance ID.
+// Check returns the health status of the service with its name, instance ID, and hostname.
 func (s *healthCheckService) Check() (Response, error) {
 	if err := s.pinger.Ping(context.Background()); err != nil {
 		return Response{}, err
@@ -49,6 +52,7 @@ func (s *healthCheckService) Check() (Response, error) {
 		Message:     "OK",
 		ServiceName: s.serviceName,
 		InstanceID:  s.instanceID,
+		Hostname:    s.hostname,
 	}
 	return res, nil
 }

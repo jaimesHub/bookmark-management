@@ -24,9 +24,10 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
 # ---- Stage 2: runtime ----
 FROM alpine:3.20
 
-# Non-root user:
-# container compromise should not give attacker root.
-RUN addgroup -S app && adduser -S app -G app
+# ca-certificates: HTTPS outbound calls
+# wget: needed by docker-compose / VM healthcheck probes (Task #2)
+RUN apk add --no-cache ca-certificates wget && \
+    addgroup -S app && adduser -S app -G app
 
 COPY --from=builder /out/api /usr/local/bin/api
 

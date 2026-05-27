@@ -26,7 +26,7 @@ func NewShorten(shortenSvc service.ShortenService) Shorten {
 }
 
 type ShortenRequest struct {
-	URL string `json:"url" binding:"required,url"`
+	URL string `json:"url" binding:"required,http_url"`
 	Exp int    `json:"exp" binding:"required,min=1"`
 }
 

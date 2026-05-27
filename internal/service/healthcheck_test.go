@@ -26,6 +26,7 @@ func TestCheck(t *testing.T) {
 			inputConfig: service.Config{
 				ServiceName: "bookmark-management",
 				InstanceID:  "550e8400-e29b-41d4-a716-446655440000",
+				Hostname:    "test-host-01",
 			},
 			mockSetup: func(m *mocks.Pinger) {
 				m.On("Ping", mock.Anything).Return(nil)
@@ -34,6 +35,25 @@ func TestCheck(t *testing.T) {
 				Message:     "OK",
 				ServiceName: "bookmark-management",
 				InstanceID:  "550e8400-e29b-41d4-a716-446655440000",
+				Hostname:    "test-host-01",
+			},
+			expectedError: nil,
+		},
+		{
+			name: "ping success with empty hostname",
+			inputConfig: service.Config{
+				ServiceName: "bookmark-management",
+				InstanceID:  "550e8400-e29b-41d4-a716-446655440000",
+				Hostname:    "",
+			},
+			mockSetup: func(m *mocks.Pinger) {
+				m.On("Ping", mock.Anything).Return(nil)
+			},
+			expectedResponse: service.Response{
+				Message:     "OK",
+				ServiceName: "bookmark-management",
+				InstanceID:  "550e8400-e29b-41d4-a716-446655440000",
+				Hostname:    "",
 			},
 			expectedError: nil,
 		},
@@ -42,6 +62,7 @@ func TestCheck(t *testing.T) {
 			inputConfig: service.Config{
 				ServiceName: "bookmark-management",
 				InstanceID:  "550e8400-e29b-41d4-a716-446655440000",
+				Hostname:    "test-host-01",
 			},
 			mockSetup: func(m *mocks.Pinger) {
 				m.On("Ping", mock.Anything).Return(errors.New("redis unreachable"))

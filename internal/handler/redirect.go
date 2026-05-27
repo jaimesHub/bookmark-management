@@ -52,5 +52,10 @@ func (h *redirectHandler) Redirect(c *gin.Context) {
 		return
 	}
 
+	if c.Query("json") == "true" {
+		c.JSON(http.StatusOK, gin.H{"redirect_url": url})
+		return
+	}
+
 	c.Redirect(http.StatusFound, url)
 }

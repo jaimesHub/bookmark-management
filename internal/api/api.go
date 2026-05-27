@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"net/http"
 
-	_ "github.com/jaimesHub/bookmark-management/docs"
+	"github.com/jaimesHub/bookmark-management/docs"
 	"github.com/redis/go-redis/v9"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/jaimesHub/bookmark-management/internal/handler"
 	"github.com/jaimesHub/bookmark-management/internal/repository"
@@ -56,6 +57,8 @@ func (e *engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 // initRoutes initializes all API routes and handlers.
 func (e *engine) initRoutes() {
+	e.app.Use(cors.Default())
+
 	urlRepo := repository.NewUrlStorage(e.redisClient)
 	pingRepo := repository.NewPingRepo(e.redisClient)
 
@@ -64,6 +67,9 @@ func (e *engine) initRoutes() {
 	checkHealthHandler := handler.NewHealthCheck(checkHealthSvc)
 
 	if e.cfg.SwaggerEnabled {
+		// Override host hardcoded "localhost:8080" trong docs/docs.go.
+		// Empty → Swagger UI dùng same-origin (browser host) → request đi qua nginx.
+		docs.SwaggerInfo.Host = e.cfg.SwaggerHost
 		e.app.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	}
 
