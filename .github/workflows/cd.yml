@@ -1,0 +1,151 @@
+name: CD
+
+on:
+  # Tag-based CD: deploy chỉ khi user explicit tag `v*` (semantic version).
+  # Lý do: dạy release ceremony + ngăn auto-deploy mọi commit lên main.
+  # CI vẫn chạy trên push to main (không trigger từ tag) → image SHA đã có sẵn trên Hub
+  # trước khi user tag → CD pull image SHA của commit được tag, không build mới.
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Image tag để deploy (short SHA). Để trống = SHA của git tag hiện tại.'
+        required: false
+        default: ''
+
+# KEY: KHÔNG cancel-in-progress cho CD.
+# Nếu cancel giữa chừng → VM có thể stuck ở state half-pulled/half-restarted.
+# Thay vào đó, group + queue: deploy mới đợi deploy cũ xong.
+concurrency:
+  group: cd-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to production VM
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Optional: tạo GitHub Environment "production" với required reviewer
+    # để add manual approval gate trước khi SSH vào VM. Hữu ích khi nhiều người ship.
+    # environment: production
+    steps:
+      - name: Checkout (cho deploy script)
+        uses: actions/checkout@v4
+
+      - name: Resolve target image tag
+        id: tag
+        run: |
+          if [ -n "${{ inputs.image_tag }}" ]; then
+            echo "value=${{ inputs.image_tag }}" >> "$GITHUB_OUTPUT"
+            echo "→ Manual deploy: ${{ inputs.image_tag }}"
+          elif [ "${{ github.ref_type }}" = "tag" ]; then
+            # Rule giữ: image tag trên Hub = git short SHA (KHÔNG phải semver tag).
+            # Git tag `v1.0.0` chỉ là trigger; image vẫn dùng SHA của commit mà v1.0.0 point tới.
+            SHA=$(git rev-parse --short ${{ github.sha }})
+            echo "value=$SHA" >> "$GITHUB_OUTPUT"
+            echo "→ Deploy from tag ${{ github.ref_name }} (commit $SHA)"
+          else
+            echo "❌ Unexpected trigger event (ref_type=${{ github.ref_type }})" && exit 1
+          fi
+
+      # Pre-flight: verify image tồn tại trên Docker Hub trước khi SSH vào VM.
+      # Nếu CI chưa xong (race condition push → cd start trước ci push-image),
+      # bail out sớm, không đụng VM.
+      - name: Verify image exists on Docker Hub
+        env:
+          IMG_TAG: ${{ steps.tag.outputs.value }}
+        run: |
+          set -euo pipefail
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://hub.docker.com/v2/repositories/jaimeshub/bookmark-app/tags/${IMG_TAG}")
+          if [ "$STATUS" != "200" ]; then
+            echo "❌ Image jaimeshub/bookmark-app:${IMG_TAG} not found on Docker Hub (HTTP $STATUS)"
+            echo "Likely cause: CI push-image chưa xong, hoặc tag sai."
+            exit 1
+          fi
+          echo "✅ Image verified: jaimeshub/bookmark-app:${IMG_TAG}"
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}      # ed25519 OpenSSH format
+          port: ${{ secrets.DEPLOY_SSH_PORT }}    # 22
+          # Pass IMG_TAG vào remote shell — appleboy/ssh-action quote tự động.
+          envs: IMG_TAG
+          script_stop: true   # fail-fast: bất kỳ command non-zero exit → toàn script fail
+          script: |
+            set -euo pipefail
+
+            # Defensive: verify deploy dir + .env tồn tại (mitigation cho Risk #6).
+            # Edge case: clean VM, lost trong disk cleanup, hoặc Lec 4 deployment chưa setup.
+            # Fail-fast với message rõ ràng, không invent state.
+            [ -d /opt/bookmark-deployment ] || { echo "❌ /opt/bookmark-deployment missing — Lec 4 deployment chưa setup"; exit 1; }
+            cd /opt/bookmark-deployment
+            [ -f .env ] || { echo "❌ .env missing — manual setup required (cp .env.example .env + populate IMG_TAG)"; exit 1; }
+
+            # 1. Snapshot SHA hiện tại để hỗ trợ rollback manual
+            PREV_TAG=$(grep -E '^IMG_TAG=' .env | cut -d= -f2 || echo "unknown")
+            echo "→ Prev IMG_TAG=$PREV_TAG | New IMG_TAG=$IMG_TAG"
+
+            # 2. Update .env (idempotent — sed in-place hoặc append nếu chưa có)
+            if grep -qE '^IMG_TAG=' .env; then
+              sed -i "s|^IMG_TAG=.*|IMG_TAG=$IMG_TAG|" .env
+            else
+              echo "IMG_TAG=$IMG_TAG" >> .env
+            fi
+
+            # 3. Pull image mới (chỉ service app, không touch redis/nginx/portal)
+            docker compose pull app
+
+            # 4. Recreate app container — depends_on Redis healthcheck đã handle ordering
+            docker compose up -d --no-deps app
+
+            # 5. Wait for healthy (timeout 60s)
+            for i in $(seq 1 12); do
+              STATUS=$(docker inspect -f '{{.State.Health.Status}}' bookmark-api 2>/dev/null || echo "starting")
+              if [ "$STATUS" = "healthy" ]; then
+                echo "✅ Container healthy after ${i}x5s"
+                exit 0
+              fi
+              echo "  [$i/12] status=$STATUS, sleeping 5s..."
+              sleep 5
+            done
+            echo "❌ Container unhealthy after 60s"
+            docker compose logs --tail=50 app
+            exit 1
+        env:
+          IMG_TAG: ${{ steps.tag.outputs.value }}
+
+      # External smoke test — đi qua nginx port 80 (VM firewall chỉ open 22/80).
+      # KHÔNG dùng :8080 — sẽ timeout vì port không expose ra ngoài.
+      - name: Smoke test (external, via nginx)
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 6); do
+            BODY=$(curl -sS --max-time 10 "http://${DEPLOY_HOST}/health-check" || echo "")
+            if echo "$BODY" | grep -q '"message":"OK"'; then
+              echo "✅ Smoke test passed: $BODY"
+              exit 0
+            fi
+            echo "  [$i/6] smoke test pending, sleeping 5s..."
+            sleep 5
+          done
+          echo "❌ Smoke test failed — deploy may be unhealthy externally"
+          echo "Manual rollback: re-run this workflow via dispatch with image_tag=<previous_sha>"
+          exit 1
+
+      - name: Deploy summary
+        if: success()
+        run: |
+          echo "### Deploy 🚀" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Image: \`jaimeshub/bookmark-app:${{ steps.tag.outputs.value }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Host: \`${{ secrets.DEPLOY_HOST }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Verified: \`http://${{ secrets.DEPLOY_HOST }}/health-check\`" >> "$GITHUB_STEP_SUMMARY"
