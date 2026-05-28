@@ -9,8 +9,8 @@ DOCKER_USER  ?= jaimeshub
 IMAGE_NAME   ?= bookmark-app
 DOCKER_IMAGE := bookmark-api
 DOCKER_TAG   := latest
-GIT_SHA      := $(shell git rev-parse --short HEAD 2>/dev/null || echo "dev")
-IMAGE_SHA    := $(DOCKER_USER)/$(IMAGE_NAME):$(GIT_SHA)
+IMG_TAG      ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "dev")
+IMAGE_SHA    := $(DOCKER_USER)/$(IMAGE_NAME):$(IMG_TAG)
 IMAGE_LATEST := $(DOCKER_USER)/$(IMAGE_NAME):latest
 
 .PHONY: help run test test-race test-service test-repository test-handler test-coverage build clean install-tools swag fmt generate \
