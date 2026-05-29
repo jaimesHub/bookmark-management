@@ -87,24 +87,28 @@ jobs:
             # Fail-fast với message rõ ràng, không invent state.
             [ -d /opt/bookmark-deployment ] || { echo "❌ /opt/bookmark-deployment missing — Lec 4 deployment chưa setup"; exit 1; }
             cd /opt/bookmark-deployment
-            [ -f .env ] || { echo "❌ .env missing — manual setup required (cp .env.example .env + populate IMG_TAG)"; exit 1; }
+            [ -f .env ] || { echo "❌ .env missing — manual setup required (cp .env.example .env + populate APP_VERSION + DOCKER_USER)"; exit 1; }
 
-            # 1. Snapshot SHA hiện tại để hỗ trợ rollback manual
-            PREV_TAG=$(grep -E '^IMG_TAG=' .env | cut -d= -f2 || echo "unknown")
-            echo "→ Prev IMG_TAG=$PREV_TAG | New IMG_TAG=$IMG_TAG"
+            # 1. Snapshot APP_VERSION hiện tại để hỗ trợ rollback manual.
+            # Note: bookmark-deployment/.env dùng var `APP_VERSION` (KHÔNG phải IMG_TAG)
+            # Compose.yml reference: image: ${DOCKER_USER}/bookmark-app:${APP_VERSION:-latest}
+            # cut -d'#' -f1 strip inline comment (vd ".env.example" có "e6b9e3b # latest built image")
+            PREV_TAG=$(grep -E '^APP_VERSION=' .env | cut -d= -f2 | cut -d'#' -f1 | tr -d ' ' || echo "unknown")
+            echo "→ Prev APP_VERSION=$PREV_TAG | New APP_VERSION=$IMG_TAG"
 
-            # 2. Update .env (idempotent — sed in-place hoặc append nếu chưa có)
-            if grep -qE '^IMG_TAG=' .env; then
-              sed -i "s|^IMG_TAG=.*|IMG_TAG=$IMG_TAG|" .env
+            # 2. Update .env APP_VERSION (idempotent — sed in-place hoặc append nếu chưa có)
+            if grep -qE '^APP_VERSION=' .env; then
+              sed -i "s|^APP_VERSION=.*|APP_VERSION=$IMG_TAG|" .env
             else
-              echo "IMG_TAG=$IMG_TAG" >> .env
+              echo "APP_VERSION=$IMG_TAG" >> .env
             fi
 
-            # 3. Pull image mới (chỉ service app, không touch redis/nginx/portal)
-            docker compose pull app
+            # 3. Pull image mới cho service `api`. Service name trong prod compose là `api`
+            # (KHÔNG phải `app` như dev compose của bookmark-management).
+            docker compose pull api
 
-            # 4. Recreate app container — depends_on Redis healthcheck đã handle ordering
-            docker compose up -d --no-deps app
+            # 4. Recreate api container — depends_on Redis healthcheck đã handle ordering
+            docker compose up -d --no-deps api
 
             # 5. Wait for healthy (timeout 60s)
             for i in $(seq 1 12); do
@@ -117,7 +121,7 @@ jobs:
               sleep 5
             done
             echo "❌ Container unhealthy after 60s"
-            docker compose logs --tail=50 app
+            docker compose logs --tail=50 api
             exit 1
         env:
           IMG_TAG: ${{ steps.tag.outputs.value }}
