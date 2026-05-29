@@ -82,8 +82,8 @@ jobs:
           push: true
           platforms: linux/amd64    # VM = amd64; multi-arch là dev concern, skip ở CI
           tags: |
-            jaimeshub/bookmark-app:${{ steps.meta.outputs.short_sha }}
-            jaimeshub/bookmark-app:latest
+            jaimes96/bookmark-app:${{ steps.meta.outputs.short_sha }}
+            jaimes96/bookmark-app:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
           # Disable SLSA build provenance/SBOM attestation.
@@ -94,5 +94,5 @@ jobs:
       - name: Summary
         run: |
           echo "### Image pushed 🚀" >> "$GITHUB_STEP_SUMMARY"
-          echo "- \`jaimeshub/bookmark-app:${{ steps.meta.outputs.short_sha }}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- \`jaimeshub/bookmark-app:latest\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- \`jaimes96/bookmark-app:${{ steps.meta.outputs.short_sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- \`jaimes96/bookmark-app:latest\`" >> "$GITHUB_STEP_SUMMARY"

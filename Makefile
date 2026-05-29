@@ -5,7 +5,7 @@ COVERAGE_THRESHOLD = 80
 # DOCKER_USER : Docker Hub username (override with `make docker-build DOCKER_USER=foo`)
 # IMAGE_NAME  : repo name on Docker Hub
 # GIT_SHA     : short commit SHA — used to dual-tag image (rollback-able)
-DOCKER_USER  ?= jaimeshub
+DOCKER_USER  ?= jaimes96
 IMAGE_NAME   ?= bookmark-app
 DOCKER_IMAGE := bookmark-api
 DOCKER_TAG   := latest

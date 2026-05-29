@@ -61,13 +61,13 @@ jobs:
         run: |
           set -euo pipefail
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            "https://hub.docker.com/v2/repositories/jaimeshub/bookmark-app/tags/${IMG_TAG}")
+            "https://hub.docker.com/v2/repositories/jaimes96/bookmark-app/tags/${IMG_TAG}")
           if [ "$STATUS" != "200" ]; then
-            echo "❌ Image jaimeshub/bookmark-app:${IMG_TAG} not found on Docker Hub (HTTP $STATUS)"
+            echo "❌ Image jaimes96/bookmark-app:${IMG_TAG} not found on Docker Hub (HTTP $STATUS)"
             echo "Likely cause: CI push-image chưa xong, hoặc tag sai."
             exit 1
           fi
-          echo "✅ Image verified: jaimeshub/bookmark-app:${IMG_TAG}"
+          echo "✅ Image verified: jaimes96/bookmark-app:${IMG_TAG}"
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
@@ -146,6 +146,6 @@ jobs:
         if: success()
         run: |
           echo "### Deploy 🚀" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Image: \`jaimeshub/bookmark-app:${{ steps.tag.outputs.value }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Image: \`jaimes96/bookmark-app:${{ steps.tag.outputs.value }}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Host: \`${{ secrets.DEPLOY_HOST }}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Verified: \`http://${{ secrets.DEPLOY_HOST }}/health-check\`" >> "$GITHUB_STEP_SUMMARY"
