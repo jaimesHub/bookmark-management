@@ -1,7 +1,10 @@
 # syntax=docker/dockerfile:1.7
 
 # ---- Stage 1: builder ----
-FROM golang:1.26-alpine AS builder
+# Pin Go 1.26.2 to match local asdf .tool-versions + course spec.
+# Bump manually when intentionally upgrading; floating `golang:1.26-alpine`
+# would drift to latest 1.26.x silently (reproducibility risk).
+FROM golang:1.26.2-alpine AS builder
 
 WORKDIR /app
 
@@ -33,9 +36,17 @@ COPY --from=builder /out/api /usr/local/bin/api
 
 USER app
 
-# Port (EXPOSE) and HEALTHCHECK are intentionally configured at the
-# orchestration layer (docker-compose.yml) rather than baked into the
-# image — keeps the image port-agnostic and lets compose interpolate
-# ${HOST_PORT}/${API_CONTAINER_PORT} from .env at runtime.
+# HEALTHCHECK is intentionally configured at the orchestration layer
+# (docker-compose.yml) rather than baked into the image — keeps the image
+# port-agnostic and lets compose interpolate ${HOST_PORT}/${API_CONTAINER_PORT}
+# from .env at runtime.
+#
+# EXPOSE 8080 is documentary metadata only — it does NOT publish the port
+# to host. Port accessibility is controlled by compose `ports:` (currently
+# commented out for the app service, so :8080 stays internal to the docker
+# network — only nginx :80 is host-mapped) + VM firewall (only 22/80 open).
+# Listed here so `docker inspect`, Kubernetes, and onboarding devs can
+# auto-detect which port the service listens on.
+EXPOSE 8080
 
 ENTRYPOINT ["/usr/local/bin/api"]

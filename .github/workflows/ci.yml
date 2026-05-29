@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'Dockerfile'
+      - 'Makefile'
+      - '.github/workflows/ci.yml'
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Hủy CI run cũ khi có commit mới cùng branch/PR → tiết kiệm minutes,
+# tránh race condition khi 2 builds cùng push tag "latest".
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read   # least-privilege; chỉ cần đọc repo, không write back
+
+jobs:
+  test-and-build:
+    name: Test + Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.2'   # Pin chính xác — match .tool-versions + Dockerfile
+          cache: true            # auto-cache GOMODCACHE/GOCACHE qua go.sum hash
+
+      - name: Run unit tests (race detector)
+        run: make test-race
+
+      - name: Coverage gate (≥80%)
+        run: make test-coverage
+
+      - name: Build binary
+        run: make build
+
+  push-image:
+    name: Build + Push Docker image
+    # Gate: chỉ chạy khi test pass + không phải PR (PR = test-only)
+    if: github.event_name != 'pull_request'
+    needs: test-and-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Derive short SHA — KHÔNG override Makefile's IMG_TAG; CI bám đúng rule
+      # "prod push lên Docker Hub luôn dùng git short SHA" (preflight Phase 5).
+      - name: Compute short SHA
+        id: meta
+        run: echo "short_sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_REGISTRY_USERNAME }}
+          password: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
+
+      # Dùng build-push-action thay vì `make docker-push` vì:
+      #  1. Gha cache (cache-from/to: type=gha) — re-build nhanh 5-10x
+      #  2. Atomic build+push (đỡ partial state nếu push fail giữa 2 tag)
+      #  3. Official + well-maintained
+      - name: Build + push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          platforms: linux/amd64    # VM = amd64; multi-arch là dev concern, skip ở CI
+          tags: |
+            jaimes96/bookmark-app:${{ steps.meta.outputs.short_sha }}
+            jaimes96/bookmark-app:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # Disable SLSA build provenance/SBOM attestation.
+          # Bootcamp trade-off: simpler Hub UI (no "unknown/unknown" entries) > supply-chain attestation.
+          # Production reconsider: enable provenance=mode=max cho audit trail + tamper detection.
+          provenance: false
+
+      - name: Summary
+        run: |
+          echo "### Image pushed 🚀" >> "$GITHUB_STEP_SUMMARY"
+          echo "- \`jaimes96/bookmark-app:${{ steps.meta.outputs.short_sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- \`jaimes96/bookmark-app:latest\`" >> "$GITHUB_STEP_SUMMARY"
