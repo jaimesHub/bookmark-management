@@ -34,6 +34,12 @@ RUN apk add --no-cache ca-certificates wget && \
 
 COPY --from=builder /out/api /usr/local/bin/api
 
+# Lec-6: WORKDIR /app áp dụng cho runtime stage để file mount tại
+# /app/keys/* (RSA private/public key) resolve đúng khi env path dùng dạng
+# relative `./keys/...`. Builder stage có WORKDIR /app riêng — KHÔNG carry
+# sang runtime stage tự động khi `FROM alpine:3.20` reset state.
+WORKDIR /app
+
 USER app
 
 # HEALTHCHECK is intentionally configured at the orchestration layer
