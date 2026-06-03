@@ -11,6 +11,25 @@ services:
       retries: 5
     restart: unless-stopped
 
+  postgres:
+    image: postgres:16-alpine
+    container_name: bookmark-postgres
+    ports:
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: ${DB_USER:-bookmark}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in .env}
+      POSTGRES_DB: ${DB_NAME:-bookmark}
+    volumes:
+      - bookmark-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-bookmark} -d ${DB_NAME:-bookmark}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
   app:
     build:
       context: .
@@ -29,8 +48,12 @@ services:
       # This always overrides whatever is in .env (.env's REDIS_ADDR applies
       # only when running the app container standalone, not via compose).
       - REDIS_ADDR=redis:6379
+      - DB_HOST=postgres
+      - DB_PORT=5432
     depends_on:
       redis:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
     # Healthcheck lives here (not in Dockerfile) so the port can be configured
     # via .env without rebuilding the image. wget is built into alpine (busybox).
@@ -84,3 +107,7 @@ services:
       portal:
         condition: service_healthy
     restart: unless-stopped
+
+volumes:
+  bookmark-pgdata:
+    driver: local
