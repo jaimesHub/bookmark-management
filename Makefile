@@ -13,7 +13,7 @@ IMG_TAG      ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "dev")
 IMAGE_SHA    := $(DOCKER_USER)/$(IMAGE_NAME):$(IMG_TAG)
 IMAGE_LATEST := $(DOCKER_USER)/$(IMAGE_NAME):latest
 
-.PHONY: help run test test-race test-service test-repository test-handler test-coverage build clean install-tools swag fmt generate \
+.PHONY: help run test test-race test-service test-repository test-handler test-coverage build clean install-tools swag fmt generate generate-rsa-key \
         docker-compose-build docker-run docker-stop docker-logs docker-ps \
         docker-build docker-push docker-buildx-multiarch-push docker-run-local docker-clean
 
@@ -87,6 +87,15 @@ build:
 
 clean:
 	rm -rf bin/ coverage.tmp coverage.out coverage.html
+
+# Generate RSA 2048 keypair cho local dev (JWT signing/verifying — Lec-6+).
+# Output: keys/private.pem (PKCS#8) + keys/public.pem (PKIX).
+# Note: keys/ gitignored — KHÔNG bao giờ commit production keys.
+generate-rsa-key:
+	mkdir -p keys
+	openssl genpkey -algorithm RSA -out keys/private.pem -pkeyopt rsa_keygen_bits:2048
+	openssl rsa -pubout -in keys/private.pem -out keys/public.pem
+	@echo "✅ RSA keypair generated: keys/private.pem + keys/public.pem"
 
 swag:
 	swag init -g cmd/api/main.go
