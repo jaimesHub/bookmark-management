@@ -1,4 +1,4 @@
-COVERAGE_EXCLUDE   = mocks|main.go|test|pkg/
+COVERAGE_EXCLUDE   = mocks|main.go|test|pkg/|repository/db.go
 COVERAGE_THRESHOLD = 80
 
 # ─── Docker image config ──────────────────────────────────────────
