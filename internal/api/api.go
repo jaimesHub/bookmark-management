@@ -30,15 +30,25 @@ type engine struct {
 	cfg         *Config
 	svcCfg      *service.Config
 	redisClient *redis.Client
+	userHandler *handler.UserHandler // Lec-6: user feature handler (nil-safe ở initRoutes)
 }
 
 // NewEngine creates and returns a new API Engine instance with all routes initialized.
-func NewEngine(cfg *Config, svcCfg *service.Config, redisClient *redis.Client) Engine {
+//
+// userHandler may be nil khi run integration tests cũ (Lec-3) chưa wire user feature.
+// Production main.go luôn pass userHandler != nil; integration test Lec-6 (T12) sẽ wire full.
+func NewEngine(
+	cfg *Config,
+	svcCfg *service.Config,
+	redisClient *redis.Client,
+	userHandler *handler.UserHandler,
+) Engine {
 	app := &engine{
 		app:         gin.Default(),
 		cfg:         cfg,
 		svcCfg:      svcCfg,
 		redisClient: redisClient,
+		userHandler: userHandler,
 	}
 
 	app.initRoutes()
@@ -88,5 +98,14 @@ func (e *engine) initRoutes() {
 			links.GET("/redirect/:code", redirectHandler.Redirect)
 		}
 
+		// Lec-6: user feature routes (T9).
+		// Nil-safe gate: chỉ register nếu userHandler đã wire — Lec-3 integration
+		// tests pass nil vẫn build + chạy OK. T12 wire full + có thể remove gate.
+		if e.userHandler != nil {
+			users := v1.Group("/users")
+			{
+				users.POST("/register", e.userHandler.Register)
+			}
+		}
 	}
 }

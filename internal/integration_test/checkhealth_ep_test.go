@@ -62,7 +62,7 @@ func TestCheckHealthEndpoint(t *testing.T) {
 				Hostname:    "integration-test-host",
 			}
 			gin.SetMode(gin.TestMode)
-			testAPI := api.NewEngine(cfg, &svcCfg, testutil.InitMockRedis(t))
+			testAPI := api.NewEngine(cfg, &svcCfg, testutil.InitMockRedis(t), nil)
 
 			recorder := tc.setupTestHTTP(testAPI)
 

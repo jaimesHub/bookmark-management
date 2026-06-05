@@ -3,6 +3,22 @@ package api
 
 import "github.com/kelseyhightower/envconfig"
 
+// DBConfig — Postgres connection params loaded từ env.
+// Main.go load riêng với prefix "" (KHÔNG qua "api" prefix của api.Config)
+// để giữ docker-compose env mapping (DB_HOST=postgres) compatibility — tránh
+// cascade rename .env.example + docker-compose.yml.
+// Tách struct ở api package (KHÔNG dùng repository.DBConfig) vì repository
+// pkg KHÔNG depend envconfig — clean architecture boundary.
+// Main.go copy fields → repository.DBConfig khi call NewPostgresDB.
+type DBConfig struct {
+	Host     string `envconfig:"DB_HOST"     default:"localhost"`
+	Port     int    `envconfig:"DB_PORT"     default:"5432"`
+	User     string `envconfig:"DB_USER"     default:"bookmark"`
+	Password string `envconfig:"DB_PASSWORD" required:"true"`
+	Name     string `envconfig:"DB_NAME"     default:"bookmark"`
+	SSLMode  string `envconfig:"DB_SSLMODE"  default:"disable"`
+}
+
 // Config holds API-layer configuration loaded from environment variables.
 type Config struct {
 	// ContainerPort is the port the HTTP server listens on inside the container.
@@ -18,6 +34,11 @@ type Config struct {
 	// Logger config
 	Env      string `envconfig:"APP_ENV" default:"dev"`
 	LogLevel string `envconfig:"LOG_LEVEL" default:"info"`
+
+	// BcryptCost cho password hashing (Lec-6 register feature).
+	// Prod default 12 (~100ms/hash); test inject 4 qua NewUserServiceForTest.
+	// Env var: API_BCRYPT_COST (prefix "api" applied bởi NewConfig).
+	BcryptCost int `envconfig:"BCRYPT_COST" default:"12"`
 }
 
 // NewConfig creates a new API Config instance from environment variables.

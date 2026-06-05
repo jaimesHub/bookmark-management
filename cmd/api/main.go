@@ -5,6 +5,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jaimesHub/bookmark-management/internal/api"
+	"github.com/jaimesHub/bookmark-management/internal/handler"
+	"github.com/jaimesHub/bookmark-management/internal/model"
+	"github.com/jaimesHub/bookmark-management/internal/repository"
 	"github.com/jaimesHub/bookmark-management/internal/service"
 	"github.com/jaimesHub/bookmark-management/pkg/logger"
 	pkgredis "github.com/jaimesHub/bookmark-management/pkg/redis"
@@ -63,7 +66,44 @@ func main() {
 		log.Fatal().Err(err).Msg("failed to create redis client")
 	}
 
-	app := api.NewEngine(cfg, &svcCfg, redisClient)
+	// ─── Lec-6: DB + User feature wire ──────────────────────────
+	// Load api.DBConfig với prefix "" → env vars DB_HOST/PORT/...
+	// trực tiếp (KHÔNG qua "api" prefix của cfg). Tránh cascade rename
+	// docker-compose.yml + .env.example sang DB_HOST → API_DB_HOST.
+	// Architecture: api.DBConfig có envconfig tags (api boundary);
+	// repository.DBConfig là pure construction params (KHÔNG depend envconfig)
+	// — main.go copy fields giữa 2 structs.
+	var apiDBCfg api.DBConfig
+	if err := envconfig.Process("", &apiDBCfg); err != nil {
+		log.Fatal().Err(err).Msg("failed to load db config")
+	}
+
+	db, err := repository.NewPostgresDB(repository.DBConfig{
+		Host:     apiDBCfg.Host,
+		Port:     apiDBCfg.Port,
+		User:     apiDBCfg.User,
+		Password: apiDBCfg.Password,
+		Name:     apiDBCfg.Name,
+		SSLMode:  apiDBCfg.SSLMode,
+	})
+	if err != nil {
+		log.Fatal().Err(err).Msg("connect postgres")
+	}
+
+	// AutoMigrate User schema (Lec-6 spec mandate via PDF).
+	// Idempotent — chạy lại không hỏng schema; production an toàn.
+	if err := db.AutoMigrate(&model.User{}); err != nil {
+		log.Fatal().Err(err).Msg("auto migrate")
+	}
+	log.Info().Msg("postgres connected + user schema migrated")
+
+	// Wire user feature: repo → svc → handler
+	userRepo := repository.NewUserRepository(db)
+	userSvc := service.NewUserService(userRepo, cfg.BcryptCost)
+	userHandler := handler.NewUserHandler(userSvc)
+	// ────────────────────────────────────────────────────────────
+
+	app := api.NewEngine(cfg, &svcCfg, redisClient, userHandler)
 
 	if err := app.Start(); err != nil {
 		log.Fatal().Err(err).Msg("api server stopped with error")
