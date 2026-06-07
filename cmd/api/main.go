@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jaimesHub/bookmark-management/internal/api"
+	"github.com/jaimesHub/bookmark-management/internal/auth"
 	"github.com/jaimesHub/bookmark-management/internal/handler"
 	"github.com/jaimesHub/bookmark-management/internal/model"
 	"github.com/jaimesHub/bookmark-management/internal/repository"
@@ -65,6 +66,27 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to create redis client")
 	}
+
+	// ─── Lec-6: RSA keypair load (T10 loader + T11 wire) ────────
+	// Eager load + fail-fast per ADR-10. Lec-6 scope: chỉ verify load OK;
+	// Lec-7 sẽ wire rsaKeys vào JWT sign/verify (login service).
+	// Placement TRƯỚC DB wire: nếu RSA missing → fail trước khi mở Postgres conn,
+	// tránh waste resources restart loop.
+	var rsaCfg api.RSAConfig
+	if err := envconfig.Process("", &rsaCfg); err != nil {
+		log.Fatal().Err(err).Msg("failed to load rsa config")
+	}
+
+	rsaKeys, err := auth.LoadKeys(rsaCfg.PrivatePath, rsaCfg.PublicPath)
+	if err != nil {
+		log.Fatal().Err(err).
+			Str("private_path", rsaCfg.PrivatePath).
+			Str("public_path", rsaCfg.PublicPath).
+			Msg("load rsa keys")
+	}
+	_ = rsaKeys // TODO Lec-7: wire vào JWT signer/verifier
+	log.Info().Msg("rsa keys loaded")
+	// ────────────────────────────────────────────────────────────
 
 	// ─── Lec-6: DB + User feature wire ──────────────────────────
 	// Load api.DBConfig với prefix "" → env vars DB_HOST/PORT/...

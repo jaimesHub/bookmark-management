@@ -19,6 +19,15 @@ type DBConfig struct {
 	SSLMode  string `envconfig:"DB_SSLMODE"  default:"disable"`
 }
 
+// RSAConfig — Path tới RSA keypair PEM files cho JWT signing/verifying.
+// Defaults match local dev workflow (`make generate-rsa-key` produces ./keys/).
+// PROD: set absolute paths /app/keys/... qua docker-compose env (ADR-10 v3).
+// Main.go load riêng với prefix "" (consistency với DBConfig pattern T8+T9).
+type RSAConfig struct {
+	PrivatePath string `envconfig:"RSA_PRIVATE_KEY_PATH" default:"./keys/private.pem"`
+	PublicPath  string `envconfig:"RSA_PUBLIC_KEY_PATH"  default:"./keys/public.pem"`
+}
+
 // Config holds API-layer configuration loaded from environment variables.
 type Config struct {
 	// ContainerPort is the port the HTTP server listens on inside the container.
