@@ -10,6 +10,51 @@ definitions:
     - exp
     - url
     type: object
+  model.RegisterRequest:
+    properties:
+      display_name:
+        maxLength: 64
+        minLength: 1
+        type: string
+      email:
+        maxLength: 254
+        type: string
+      password:
+        maxLength: 72
+        minLength: 8
+        type: string
+      username:
+        maxLength: 32
+        minLength: 3
+        type: string
+    required:
+    - display_name
+    - email
+    - password
+    - username
+    type: object
+  model.RegisterResponse:
+    properties:
+      data:
+        $ref: '#/definitions/model.User'
+      message:
+        type: string
+    type: object
+  model.User:
+    properties:
+      created_at:
+        type: string
+      display_name:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      updated_at:
+        type: string
+      username:
+        type: string
+    type: object
   service.Response:
     properties:
       hostname:
@@ -114,4 +159,44 @@ paths:
       summary: Shorten a URL
       tags:
       - links
+  /v1/users/register:
+    post:
+      consumes:
+      - application/json
+      description: Tạo user account mới với password được bcrypt hash.
+      parameters:
+      - description: Register payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.RegisterResponse'
+        "400":
+          description: invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: email already registered | username already taken
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Register a new user
+      tags:
+      - users
 swagger: "2.0"
