@@ -14,7 +14,7 @@ A RESTful API service built with Go, following Clean Architecture principles. Sh
 - **API Docs**: [Swagger/OpenAPI](https://github.com/swaggo/swag) via `swag`
 - **Database**: [PostgreSQL 15+](https://www.postgresql.org/) — primary store cho user accounts
 - **ORM**: [GORM v2](https://gorm.io/) + drivers: `gorm.io/driver/postgres` (prod) + `gorm.io/driver/sqlite` (test)
-- **Password Hashing**: [golang.org/x/crypto/bcrypt](https://pkg.go.dev/golang.org/x/crypto/bcrypt) — cost configurable via `BCRYPT_COST` (default 12)
+- **Password Hashing**: [golang.org/x/crypto/bcrypt](https://pkg.go.dev/golang.org/x/crypto/bcrypt) — cost configurable via `API_BCRYPT_COST` (default 12)
 - **JWT Prep**: `crypto/rsa` + `encoding/pem` stdlib — eager load RSA keypair tại bootstrap (Lec-6 ADR-10; Lec-7 sẽ wire JWT signing)
 - **Container**: Multi-stage Dockerfile + Docker Compose (app + Redis + PostgreSQL)
 
@@ -101,15 +101,15 @@ bookmark-management/
 
 All configuration is read from environment variables at startup — no config files.
 
-**Note**: All env var names are exact `envconfig` tag values (no auto-prefix added by `Process("")`). Service-level + API-level + DB-level vars have no prefix. `HOST_PORT` is consumed by docker-compose only — not read by the Go app.
+**Note**: **API config** vars use prefix `API_` — loaded via `envconfig.Process("api", cfg)` in `internal/api/config.go` → wire-level name is `API_<TAG>` (e.g. `CONTAINER_PORT` tag → `API_CONTAINER_PORT` env var). **DB**, **RSA**, **Service** (SERVICE_NAME, INSTANCE_ID, APP_HOSTNAME), and **Redis** configs use no prefix (loaded với empty prefix). `HOST_PORT` is consumed by docker-compose only — not read by the Go app.
 
 | Variable                | Default              | Description                                                       |
 |-------------------------|----------------------|-------------------------------------------------------------------|
-| `HOST_PORT`             | `8080`               | Docker-only: host-side port published by compose (`HOST_PORT:CONTAINER_PORT`). Access via `http://localhost:$HOST_PORT`. |
-| `CONTAINER_PORT`        | `8080`               | Port the HTTP server listens on inside the container              |
-| `APP_ENV`               | `dev`                | `dev` = console pretty log, `prod` = JSON 1-line                  |
-| `LOG_LEVEL`             | `info`               | `debug` \| `info` \| `warn` \| `error`                            |
-| `SWAGGER_ENABLED`       | `false`              | Set to `true` to expose `/swagger/*` UI                           |
+| `HOST_PORT`             | `8080`               | Docker-only: host-side port published by compose (`HOST_PORT:API_CONTAINER_PORT`). Access via `http://localhost:$HOST_PORT`. |
+| `API_CONTAINER_PORT`    | `8080`               | Port the HTTP server listens on inside the container              |
+| `API_APP_ENV`           | `dev`                | `dev` = console pretty log, `prod` = JSON 1-line                  |
+| `API_LOG_LEVEL`         | `info`               | `debug` \| `info` \| `warn` \| `error`                            |
+| `API_SWAGGER_ENABLED`   | `false`              | Set to `true` to expose `/swagger/*` UI                           |
 | `SERVICE_NAME`          | `bookmark_service`   | Service identifier returned by `/health-check`                    |
 | `INSTANCE_ID`           | *(empty)*            | Instance identifier; auto-generated UUID if not provided          |
 | `REDIS_ADDR`            | `localhost:6379`     | Redis server address (compose overrides to `redis:6379`)          |
@@ -124,8 +124,8 @@ All configuration is read from environment variables at startup — no config fi
 | `DB_SSLMODE`            | `disable`            | PostgreSQL SSL mode (`disable` for local, `require` for production) |
 | `RSA_PRIVATE_KEY_PATH`  | `./keys/private.pem` | Path to RSA private key PEM file (Lec-7: JWT signing)             |
 | `RSA_PUBLIC_KEY_PATH`   | `./keys/public.pem`  | Path to RSA public key PEM file (Lec-7: JWT verification)         |
-| `BCRYPT_COST`           | `12`                 | bcrypt cost (4 for test, 10–12 for production, max 31)            |
-| `SWAGGER_HOST`          | *(empty)*            | Override Swagger UI host (empty → same-origin via nginx)          |
+| `API_BCRYPT_COST`       | `12`                 | bcrypt cost (4 for test, 10–12 for production, max 31)            |
+| `API_SWAGGER_HOST`      | *(empty)*            | Override Swagger UI host (empty → same-origin via nginx)          |
 
 ## Getting Started
 
@@ -175,7 +175,7 @@ Generates Swagger docs, then starts the server on `localhost:8080`.
 With Swagger UI + debug logging:
 
 ```bash
-SWAGGER_ENABLED=true LOG_LEVEL=debug DB_PASSWORD=<password> make run
+API_SWAGGER_ENABLED=true API_LOG_LEVEL=debug DB_PASSWORD=<password> make run
 # → http://localhost:8080/swagger/index.html
 # UI sẽ hiển thị "users" tag với POST /v1/users/register
 ```
@@ -435,13 +435,13 @@ curl -X POST http://localhost:8080/v1/users/register \
 ```
 
 **Security notes**:
-- Password stored as bcrypt hash (cost via `BCRYPT_COST`, default 12 prod)
+- Password stored as bcrypt hash (cost via `API_BCRYPT_COST`, default 12 prod)
 - `password_hash` field never serialized (`json:"-"`)
 - Email is trim+lowercased on persist (case-insensitive uniqueness)
 
 ---
 
-### `GET /swagger/*` *(when `SWAGGER_ENABLED=true`)*
+### `GET /swagger/*` *(when `API_SWAGGER_ENABLED=true`)*
 
 Interactive Swagger UI documenting all endpoints.
 
