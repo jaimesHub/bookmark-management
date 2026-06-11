@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jaimesHub/bookmark-management/internal/model"
@@ -26,34 +25,33 @@ type UserService interface {
 }
 
 // userService giữ deps + inject points cho deterministic test.
-// `now` + `newID` mặc định production; T6 override qua NewUserServiceForTest.
+// `newID` mặc định production; T6 override qua NewUserServiceForTest.
+// CreatedAt/UpdatedAt KHÔNG inject — GORM auto-handle via BeforeCreate hook
+// (per instructor feedback PR #13 + GORM Models docs).
 type userService struct {
 	repo       repository.UserRepository
 	bcryptCost int
-	now        func() time.Time
 	newID      func() string
 }
 
 // NewUserService — production constructor. bcryptCost từ config (default 12).
-// Inject time.Now + uuid.NewString → deterministic-friendly architecture
+// Inject uuid.NewString → deterministic-friendly architecture
 // (override qua NewUserServiceForTest cho unit test).
 func NewUserService(repo repository.UserRepository, bcryptCost int) UserService {
 	return &userService{
 		repo:       repo,
 		bcryptCost: bcryptCost,
-		now:        time.Now,
 		newID:      uuid.NewString,
 	}
 }
 
-// NewUserServiceForTest — test-only constructor exposing now + newID inject.
+// NewUserServiceForTest — test-only constructor exposing newID inject.
 // Plan § 5.1 line 827 require: tránh build tag complexity. T6 service tests
-// dùng cost=4 (bcrypt fast), fixed clock, fixed UUID cho assertion stable.
-func NewUserServiceForTest(repo repository.UserRepository, bcryptCost int, nowFn func() time.Time, idFn func() string) UserService {
+// dùng cost=4 (bcrypt fast) + fixed UUID cho assertion stable.
+func NewUserServiceForTest(repo repository.UserRepository, bcryptCost int, idFn func() string) UserService {
 	return &userService{
 		repo:       repo,
 		bcryptCost: bcryptCost,
-		now:        nowFn,
 		newID:      idFn,
 	}
 }
@@ -65,7 +63,7 @@ func NewUserServiceForTest(repo repository.UserRepository, bcryptCost int, nowFn
 //  2. Pre-check email exists → ErrEmailAlreadyExists (handler → 409).
 //  3. Pre-check username exists → ErrUsernameAlreadyExists.
 //  4. bcrypt hash password với cost từ config.
-//  5. Build User entity với gen ID + timestamp UTC.
+//  5. Build User entity với gen ID (timestamps để GORM auto-set ở BeforeCreate hook).
 //  6. Repo Create — race-rare khi 2 register chính xác simultaneous.
 //     uniqueIndex ở DB layer là defense-in-depth.
 func (s *userService) Register(ctx context.Context, req model.RegisterRequest) (*model.User, error) {
@@ -90,15 +88,13 @@ func (s *userService) Register(ctx context.Context, req model.RegisterRequest) (
 		return nil, fmt.Errorf("hash password: %w", err)
 	}
 
-	now := s.now().UTC()
 	u := &model.User{
 		ID:           s.newID(),
 		Username:     req.Username,
 		Email:        email,
 		DisplayName:  req.DisplayName,
 		PasswordHash: string(hash),
-		CreatedAt:    now,
-		UpdatedAt:    now,
+		// CreatedAt + UpdatedAt: GORM auto-set via BeforeCreate hook (repository layer).
 	}
 
 	if err := s.repo.Create(ctx, u); err != nil {
