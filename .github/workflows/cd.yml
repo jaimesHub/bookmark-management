@@ -89,6 +89,35 @@ jobs:
             cd /opt/bookmark-deployment
             [ -f .env ] || { echo "❌ .env missing — manual setup required (cp .env.example .env + populate APP_VERSION + DOCKER_USER)"; exit 1; }
 
+            # 0. Pre-deploy infra health gate — verify postgres + redis healthy
+            # TRƯỚC khi mutate state (.env / docker pull / api recreate).
+            # T21 incident (2026-06-11) revealed: missing infra → 60s healthcheck timeout
+            # với log khó hiểu. Gate này fail-fast (< 5s) + chỉ operator vào RUNBOOK § 2.
+            #
+            # Design intent: CD KHÔNG auto-recover infra (philosophy: fail loud, recover
+            # deliberately — xem RUNBOOK § 3 design rationale).
+            echo "Pre-deploy infra health gate..."
+            for svc in postgres redis; do
+              STATUS=$(docker inspect -f '{{.State.Health.Status}}' bookmark-$svc 2>/dev/null || echo "missing")
+              if [ "$STATUS" != "healthy" ]; then
+                echo ""
+                echo "❌ Infra dependency 'bookmark-$svc' not healthy (status=$STATUS)."
+                echo ""
+                echo "Recovery playbook:"
+                echo "  → RUNBOOK § 2 Symptom A: https://github.com/jaimesHub/bookmark-deployment/blob/main/docs/RUNBOOK.md#-2-incident-recovery-playbook"
+                echo ""
+                echo "Quick recover (SSH vào VM):"
+                echo "  cd /opt/bookmark-deployment"
+                echo "  docker compose up -d $svc"
+                echo "  sleep 30 && docker compose ps $svc"
+                echo "  # Sau khi healthy, re-run CD workflow này (gh run rerun --failed)"
+                exit 1
+              fi
+              echo "  ✅ bookmark-$svc healthy"
+            done
+            echo "Pre-deploy gate PASS"
+            echo ""
+
             # 1. Snapshot APP_VERSION hiện tại để hỗ trợ rollback manual.
             # Note: bookmark-deployment/.env dùng var `APP_VERSION` (KHÔNG phải IMG_TAG)
             # Compose.yml reference: image: ${DOCKER_USER}/bookmark-app:${APP_VERSION:-latest}
@@ -107,7 +136,11 @@ jobs:
             # (KHÔNG phải `app` như dev compose của bookmark-management).
             docker compose pull api
 
-            # 4. Recreate api container — depends_on Redis healthcheck đã handle ordering
+            # 4. Recreate api container — `--no-deps` intentional:
+            #    CD chỉ touch app code, KHÔNG manage infra (postgres/redis/nginx ownership
+            #    thuộc DevOps manual procedure — xem RUNBOOK § 3 design rationale).
+            #    Phase 0 gate above đã verify dependencies healthy trước khi tới đây.
+            #    Ref: https://github.com/jaimesHub/bookmark-deployment/blob/main/docs/RUNBOOK.md#-3-pre-deploy-sanity-check-mọi-lần-deploy
             docker compose up -d --no-deps api
 
             # 5. Wait for healthy (timeout 60s)
