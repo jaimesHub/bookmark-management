@@ -100,7 +100,7 @@ func TestShortenEndpoint(t *testing.T) {
 				InstanceID:  "550e8400-e29b-41d4-a716-446655440000",
 			}
 			gin.SetMode(gin.TestMode)
-			testAPI := api.NewEngine(cfg, &svcCfg, tc.setupRedis(t))
+			testAPI := api.NewEngine(cfg, &svcCfg, tc.setupRedis(t), nil)
 
 			recorder := tc.setupTestHTTP(testAPI)
 

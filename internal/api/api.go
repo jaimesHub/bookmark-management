@@ -30,15 +30,26 @@ type engine struct {
 	cfg         *Config
 	svcCfg      *service.Config
 	redisClient *redis.Client
+	userHandler *handler.UserHandler // Lec-6: user feature handler (required in production)
 }
 
 // NewEngine creates and returns a new API Engine instance with all routes initialized.
-func NewEngine(cfg *Config, svcCfg *service.Config, redisClient *redis.Client) Engine {
+//
+// Lec-3 integration tests may pass nil userHandler (acceptable because those tests
+// don't hit /v1/users/register — Gin stores method value without dereferencing).
+// Production main.go MUST pass userHandler != nil.
+func NewEngine(
+	cfg *Config,
+	svcCfg *service.Config,
+	redisClient *redis.Client,
+	userHandler *handler.UserHandler,
+) Engine {
 	app := &engine{
 		app:         gin.Default(),
 		cfg:         cfg,
 		svcCfg:      svcCfg,
 		redisClient: redisClient,
+		userHandler: userHandler,
 	}
 
 	app.initRoutes()
@@ -88,5 +99,10 @@ func (e *engine) initRoutes() {
 			links.GET("/redirect/:code", redirectHandler.Redirect)
 		}
 
+		// Lec-6: user feature routes (T9).
+		users := v1.Group("/users")
+		{
+			users.POST("/register", e.userHandler.Register)
+		}
 	}
 }
