@@ -537,3 +537,11 @@ Sau setup, target `docker-buildx-multiarch-push` chạy được cả Mac M-seri
 - `Lecture-04-docker-rebuild-publish.md` — iterative rebuild + push workflow
 - `Lecture-04-prd-redeploy.md` — VM redeploy procedure
 - `Lecture-04-pre-submission-checklist.md` — pre-submission cleanup + tag release
+
+## Operations
+
+Production VM operational knowledge sống trong [`bookmark-deployment`](https://github.com/jaimesHub/bookmark-deployment) repo. Khi cần deploy lần đầu, recovery sau incident, hoặc verify trước khi merge PR vào `main`, đọc:
+
+- **[Production Runbook](https://github.com/jaimesHub/bookmark-deployment/blob/main/docs/RUNBOOK.md)** — first-time VM deploy checklist, incident playbook (postgres no-host, nginx 502 stale upstream), pre-deploy sanity check + `--no-deps` design rationale của CD workflow.
+
+> 💡 Khi nào đọc: 🆕 first-time VM provision · 🚨 CD deploy fail / 502 / container unhealthy · ✅ trước mỗi PR merge vào `main`.
